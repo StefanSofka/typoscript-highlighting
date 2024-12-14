@@ -1,0 +1,40 @@
+{
+  "scopeName": "source.typoscript",
+  "patterns": [
+    {
+      "name": "keyword.control.import.typoscript",
+      "match": "@import",
+      "captures": {
+        "0": { "name": "keyword.import.typoscript" }
+      }
+    },
+    {
+      "name": "string.path.typoscript",
+      "match": "'[^']+'",
+      "captures": {
+        "0": { "name": "string.path.typoscript" }
+      }
+    },
+    {
+      "name": "comment.block.typoscript",
+      "match": "(?<!\\S)#.*$"
+    },
+    {
+      "name": "keyword.control.block.typoscript",
+      "match": "\\[.*?\\]"
+    },
+    {
+      "name": "keyword.control.endblock.typoscript",
+      "match": "(?<=\\n)\\[end\\]"
+    },
+    {
+      "name": "entity.name.assignment.typoscript",
+      "match": "(?<!\\S)([a-zA-Z0-9_\\.]+)\\s*(=|=<|>)\\s*([^#\\n]*)",
+      "captures": {
+        "1": { "name": "variable.parameter.typoscript" },
+        "2": { "name": "keyword.operator.equals.typoscript" },
+        "3": { "name": "string.value.typoscript" }
+      }
+    }
+  ]
+}

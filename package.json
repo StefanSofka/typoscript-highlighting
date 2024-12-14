@@ -1,0 +1,57 @@
+{
+  "name": "typoscript-highlighting",
+  "displayName": "TYPO3 - TypoScript Highlighting",
+  "description": "Syntax highlighting for TypoScript files of TYPO3 in VS Code.",
+  "version": "1.0.0",
+  "publisher": "stefan-sofka",
+  "author": {
+    "name": "Stefan Sofka",
+    "email": "stefan.sofka@mailbox.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/StefanSofka/typoscript-highlighting.git"
+  },
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Themes",
+    "Other"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "typoscript",
+        "aliases": [
+          "TypoScript",
+          "typoscript"
+        ],
+        "extensions": [
+          ".typoscript",
+          ".tsconfig"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "typoscript",
+        "scopeName": "source.typoscript",
+        "path": "./syntaxes/typoscript.tmLanguage.json"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:typoscript"
+  ],
+  "main": "./extension.js",
+  "scripts": {
+    "vscode:prepublish": "echo \"No TypeScript compilation needed.\""
+  },
+  "dependencies": {
+    "@vscode/vsce": "^3.2.1"
+  }
+}
