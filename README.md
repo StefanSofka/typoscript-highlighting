@@ -34,22 +34,7 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 
 ### Example of Syntax Highlighting:
 
-```typoscript
-###############
-# DEVELOPMENT #
-###############
-[applicationContext == "Development"]
-	config {
-		compressCss = 0
-		concatenateCss = 0
-		compressJs = 0
-		concatenateJs = 0
-		contentObjectExceptionHandler = 0
-	}
-[end]
-
-@import 'EXT:package/Configuration/TypoScript/setup.typoscript'
-```
+![Screenshots](images/example.png)
 
 ---
 
