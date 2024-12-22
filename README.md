@@ -2,14 +2,23 @@
 
 Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! This extension provides syntax highlighting specifically designed for TypoScript files, a configuration language used in TYPO3 CMS. Enhance your coding experience with better readability and clear structure.
 
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+  - [Manual Installation](#manual-installation)
+- [How to Use](#how-to-use)
+- [Screenshots](#screenshots)
+- [Contributing](#contributing)
+- [Feedback and Support](#feedback-and-support)
+- [License](#license)
+
 ---
 
 ## Features
-
-- Syntax highlighting for `.typoscript` and `.tsconfig` files.
-- Clear separation of variables, paths, operators, and comments for better clarity.
-- Supports additional constructs like `@import`, nested configurations, and more.
-- Lightweight and fast.
+- **Syntax-Highlighting** für `.typoscript` und `.tsconfig`  
+- **Übersichtliche Trennung** von Variablen, Pfaden, Operatoren und Kommentaren  
+- **Unterstützung** für zusätzliche Konstrukte wie `@import` und verschachtelte Konfigurationen  
+- **Leichtgewichtig und schnell** – kein unnötiger Overhead
 
 ---
 
@@ -17,8 +26,20 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 
 1. Open Visual Studio Code.
 2. Navigate to the Extensions Marketplace (`Ctrl+Shift+X`).
-3. Search for "TypoScript Highlighting".
+3. Search for "**TypoScript Highlighting**".
 4. Click **Install**.
+
+### Manual Installation
+
+#### 1. Build vscode package `.vsix` file
+```bash
+npx @vscode/vsce package
+```
+
+#### 2. Install created `.vsix` file
+```bash
+vscodium --install-extension typoscript-highlighting-*.vsix
+```
 
 ---
 
@@ -33,8 +54,7 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 ## Screenshots
 
 ### Example of Syntax Highlighting:
-
-![Screenshots](images/example.png)
+<img src="images/example.png" alt="Preview of TypoScript Syntax Highlighting" width="450px" />
 
 ---
 
@@ -42,9 +62,9 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 
 We welcome contributions to improve this extension! To contribute:
 
-1. Fork the repository on GitHub.
-2. Clone the forked repository.
-3. Make your changes and create a pull request.
+1. *Fork* the repository on GitHub.
+2. *Clone* the forked repository.
+3. Make your changes and create a *pull request*.
 
 ---
 

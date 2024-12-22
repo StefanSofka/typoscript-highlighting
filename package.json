@@ -2,7 +2,7 @@
   "name": "typoscript-highlighting",
   "displayName": "TYPO3 - TypoScript Highlighting",
   "description": "Syntax highlighting for TypoScript files of TYPO3 in VS Code.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "stefan-sofka",
   "author": {
     "name": "Stefan Sofka",

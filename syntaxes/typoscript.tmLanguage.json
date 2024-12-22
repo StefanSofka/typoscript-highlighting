@@ -2,6 +2,35 @@
   "scopeName": "source.typoscript",
   "patterns": [
     {
+      "name": "comment.block.documentation.typoscript",
+      "begin": "/\\*\\*",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.begin.typoscript"
+        }
+      },
+      "end": "\\*/",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.end.typoscript"
+        }
+      },
+      "patterns": [
+        {
+          "match": ".",
+          "name": "comment.block.documentation.typoscript"
+        }
+      ]
+    },
+    {
+      "name": "comment.line.double-slash.typoscript",
+      "match": "//.*$"
+    },
+    {
+      "name": "comment.block.typoscript",
+      "match": "(?<!\\S)#.*$"
+    },
+    {
       "name": "keyword.control.import.typoscript",
       "match": "@import",
       "captures": {
@@ -14,10 +43,6 @@
       "captures": {
         "0": { "name": "string.path.typoscript" }
       }
-    },
-    {
-      "name": "comment.block.typoscript",
-      "match": "(?<!\\S)#.*$"
     },
     {
       "name": "keyword.control.block.typoscript",
