@@ -7,6 +7,7 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 - [Installation](#installation)
   - [Manual Installation](#manual-installation)
 - [How to Use](#how-to-use)
+- [TYPO3 Version Detection (Comments)](#typo3-version-detection-comments)
 - [Screenshots](#screenshots)
 - [Contributing](#contributing)
 - [Feedback and Support](#feedback-and-support)
@@ -15,10 +16,10 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 ---
 
 ## Features
-- **Syntax-Highlighting** für `.typoscript` und `.tsconfig`  
-- **Übersichtliche Trennung** von Variablen, Pfaden, Operatoren und Kommentaren  
-- **Unterstützung** für zusätzliche Konstrukte wie `@import` und verschachtelte Konfigurationen  
-- **Leichtgewichtig und schnell** – kein unnötiger Overhead
+- **Syntax highlighting** for `.typoscript` and `.tsconfig`
+- **Clear separation** of variables, paths, operators, and comments
+- **Support** for additional constructs like `@import` and nested configurations
+- **Lightweight and fast** with no unnecessary overhead
 
 ---
 
@@ -31,7 +32,7 @@ Welcome to the **TypoScript Highlighting** extension for Visual Studio Code! Thi
 
 ### Manual Installation
 
-#### 1. Build vscode package `.vsix` file
+#### 1. Build VS Code package `.vsix` file
 ```bash
 npx @vscode/vsce package
 ```
@@ -48,6 +49,29 @@ vscodium --install-extension typoscript-highlighting-*.vsix
 1. Open any file with the `.typoscript` or `.tsconfig` extension.
 2. Syntax highlighting will be automatically applied.
 3. Enjoy a cleaner and more structured view of your TypoScript code.
+
+---
+
+## TYPO3 Version Detection (Comments)
+
+The extension can switch TypoScript comment rules based on the detected TYPO3 version.
+
+- `auto` (default): Detects the version from `composer.lock` (preferred) or `composer.json`.
+- `v11`: Forces TYPO3 v11.x comment rules.
+- `v12`: Forces TYPO3 v12+ comment rules (covers 12, 13, 14).
+
+Setting key: `typoscriptHighlighting.commentRules`
+
+Example:
+```json
+{
+  "typoscriptHighlighting.commentRules": "auto"
+}
+```
+
+Detection details:
+- `composer.lock` is used when present because it reflects the resolved TYPO3 version.
+- `composer.json` is used as a fallback when no lockfile exists.
 
 ---
 

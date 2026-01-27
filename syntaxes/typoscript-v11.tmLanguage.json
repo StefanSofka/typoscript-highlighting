@@ -21,23 +21,14 @@
       ]
     },
     {
-      "name": "entity.name.assignment.typoscript",
-      "match": "(?<!\\S)([a-zA-Z0-9_\\.]+)\\s*(=|=<|>)\\s*([^\\n]*)",
-      "captures": {
-        "1": { "name": "variable.parameter.typoscript" },
-        "2": { "name": "keyword.operator.equals.typoscript" },
-        "3": { "name": "string.value.typoscript" }
-      }
-    },
-    {
       "name": "comment.block.documentation.typoscript",
-      "begin": "/\\*\\*",
+      "begin": "^\\s*/\\*\\*",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.comment.begin.typoscript"
         }
       },
-      "end": "\\*/",
+      "end": "^\\s*\\*/.*$",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.comment.end.typoscript"
@@ -52,13 +43,13 @@
     },
     {
       "name": "comment.block.typoscript",
-      "begin": "/\\*",
+      "begin": "^\\s*/\\*",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.comment.begin.typoscript"
         }
       },
-      "end": "\\*/",
+      "end": "^\\s*\\*/.*$",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.comment.end.typoscript"
@@ -73,11 +64,11 @@
     },
     {
       "name": "comment.line.double-slash.typoscript",
-      "match": "//.*$"
+      "match": "^\\s*//.*$"
     },
     {
       "name": "comment.block.typoscript",
-      "match": "#.*$"
+      "match": "^\\s*#.*$"
     },
     {
       "name": "keyword.control.import.typoscript",
@@ -100,6 +91,15 @@
     {
       "name": "keyword.control.endblock.typoscript",
       "match": "(?<=\\n)\\[end\\]"
+    },
+    {
+      "name": "entity.name.assignment.typoscript",
+      "match": "(?<!\\S)([a-zA-Z0-9_\\.]+)\\s*(=|=<|>)\\s*([^\\n]*)",
+      "captures": {
+        "1": { "name": "variable.parameter.typoscript" },
+        "2": { "name": "keyword.operator.equals.typoscript" },
+        "3": { "name": "string.value.typoscript" }
+      }
     }
   ]
 }
