@@ -21,6 +21,25 @@ test('different projects use their own versions in the same workspace', async (t
   assert.deepEqual(editor.documents.map((doc) => doc.languageId), ['typoscript-v11', 'typoscript-v12']);
 });
 
+for (const [major, version] of [[13, '13.4.0'], [14, '14.3.0']]) {
+  for (const packageName of ['typo3/cms-core', 'typo3/cms']) {
+    for (const source of ['composer.lock', 'composer.json']) {
+      test(`TYPO3 ${major}: ${packageName} in ${source} selects modern rules`, async (t) => {
+        const { editor, controller, errors } = setup(t);
+        const directory = `/v${major}`;
+        editor.put(`${directory}/${source}`, source === 'composer.lock'
+          ? { packages: [{ name: packageName, version }] }
+          : { require: { [packageName]: `^${version}` } });
+        const document = editor.document(`${directory}/packages/site/setup.typoscript`);
+        await controller.refresh();
+        assert.equal(editor.documents[0].languageId, 'typoscript-v12');
+        assert.deepEqual(editor.changes, [{ uri: document.uri.toString(), languageId: 'typoscript-v12' }]);
+        assert.deepEqual(errors, []);
+      });
+    }
+  }
+}
+
 test('resource settings are honored and forced modes avoid filesystem reads', async (t) => {
   const { editor, controller } = setup(t);
   const old = editor.document('/old/setup.typoscript');
@@ -40,6 +59,20 @@ test('unknown versions default to v12 without touching unrelated documents', asy
   await controller.refresh();
   assert.deepEqual(editor.documents.map((doc) => doc.languageId), ['typoscript-v12', 'plaintext', 'javascript']);
   assert.equal(editor.changes.length, 1);
+});
+
+for (const mode of ['v13', 'v14']) test(`${mode} forces modern rules over a legacy project and manual pin`, async (t) => {
+  const { editor, controller } = setup(t);
+  editor.put('/site/composer.json', { require: { 'typo3/cms-core': '^11' } });
+  editor.document('/site/setup.typoscript', 'typoscript-v11');
+  editor.mode = mode;
+  await controller.refresh();
+  assert.equal(editor.documents[0].languageId, 'typoscript-v12');
+  assert.equal(editor.reads.length, 0);
+  editor.mode = 'auto';
+  editor.events.configuration.fire({ affectsConfiguration: () => true });
+  await controller.whenIdle();
+  assert.equal(editor.documents[0].languageId, 'typoscript-v11');
 });
 
 for (const kind of ['create', 'change', 'delete']) test(`Composer ${kind} events invalidate cached versions`, async (t) => {

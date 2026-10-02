@@ -6,6 +6,15 @@
 !language-configuration.json
 !language-configuration-v11.json
 !lib/**
+!media/**
 !syntaxes/**
 !images/**
 !docs/**
+!node_modules/vscode-textmate/package.json
+!node_modules/vscode-textmate/LICENSE.md
+!node_modules/vscode-textmate/release/main.js
+!node_modules/vscode-oniguruma/package.json
+!node_modules/vscode-oniguruma/LICENSE.txt
+!node_modules/vscode-oniguruma/NOTICES.txt
+!node_modules/vscode-oniguruma/release/main.js
+!node_modules/vscode-oniguruma/release/onig.wasm

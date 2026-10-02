@@ -179,6 +179,43 @@ test('v12 code after an inline block comment is still tokenized', () => {
   scoped(tokens, 'PAGE', 'string.value.typoscript');
 });
 
+for (const comment of ['/**/', '/* */', '/** */', '/***/']) {
+  test(`v12+ empty block comment ${comment} restores the following statement`, () => {
+    const lines = tokenize('typoscript-v12', [comment, 'page = PAGE']);
+    scoped(lines[0], '/*', 'punctuation.definition.comment.begin.typoscript');
+    scoped(lines[0], '*/', 'punctuation.definition.comment.end.typoscript');
+    scoped(lines[1], 'page', 'variable.parameter.typoscript');
+    noComments(lines[1]);
+  });
+}
+
+test('v12+ inline empty comments do not consume following lines', () => {
+  for (const statement of ['/**/ page = PAGE', 'page > /**/', 'value := addToList(1) /**/', '[END] /**/']) {
+    const lines = tokenize('typoscript-v12', [statement, 'page = PAGE']);
+    scoped(lines[0], '*/', 'punctuation.definition.comment.end.typoscript');
+    scoped(lines[1], 'page', 'variable.parameter.typoscript');
+    noComments(lines[1]);
+  }
+});
+
+test('v11 empty-looking inline comments still require a closing line', () => {
+  const lines = tokenize('typoscript-v11', ['/**/', 'page = PAGE', '*/', 'page = PAGE']);
+  scoped(lines[1], 'page = PAGE', 'comment.block.typoscript');
+  scoped(lines[3], 'page', 'variable.parameter.typoscript');
+  noComments(lines[3]);
+});
+
+test('empty comment markers stay literal in assignment values', () => {
+  for (const language of ['typoscript-v11', 'typoscript-v12']) {
+    const lines = tokenize(language, ['page = /**/', 'page (', '  /**/', ')', 'page = PAGE']);
+    scoped(lines[0], '/**/', 'string.value.typoscript');
+    scoped(lines[2], '/**/', 'string.value.typoscript');
+    noComments(lines[0]);
+    noComments(lines[2]);
+    noComments(lines[4]);
+  }
+});
+
 test('registered v11 and v12 modes use distinct block comment rules', () => {
   const v11 = tokenize('typoscript-v11', ['/* one line */', 'page = PAGE']);
   const v12 = tokenize('typoscript-v12', ['/* one line */', 'page = PAGE']);

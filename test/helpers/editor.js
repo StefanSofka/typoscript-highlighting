@@ -25,9 +25,10 @@ function createEditor() {
   const reads = [];
   const changes = [];
   const watchers = [];
-  const events = Object.fromEntries(['open', 'close', 'configuration', 'folders'].map((name) => [name, event()]));
+  const events = Object.fromEntries(['open', 'close', 'configuration', 'folders', 'visible', 'text'].map((name) => [name, event()]));
   const editor = {
     files, settings, reads, changes, watchers, events,
+    palettes: new Map(), customColors: new Map(), styles: [], editors: [],
     documents: [],
     mode: 'auto',
     readHook: null,
@@ -36,9 +37,17 @@ function createEditor() {
       files.set(new Uri(scheme, filename, authority).toString(), typeof data === 'string' ? data : JSON.stringify(data));
     },
     document(filename, languageId = 'typoscript', scheme = 'file', authority = '') {
-      const document = { uri: new Uri(scheme, filename, authority), languageId, isClosed: false };
+      const document = { uri: new Uri(scheme, filename, authority), languageId, isClosed: false,
+        version: 1, text: '', getText() { return this.text; } };
       editor.documents.push(document);
       return document;
+    },
+    textEditor(document) {
+      const textEditor = { document, decorations: new Map(),
+        setDecorations(style, ranges) { this.decorations.set(style, ranges); } };
+      editor.editors.push(textEditor);
+      editor.vscode.window.visibleTextEditors.push(textEditor);
+      return textEditor;
     },
     async setLanguage(document, languageId) {
       if (editor.languageHook) await editor.languageHook(document, languageId);
@@ -70,8 +79,12 @@ function createEditor() {
         }
       },
       getConfiguration(section, uri) {
-        return { get: (key, fallback) => settings.get(uri.toString()) ?? editor.mode ?? fallback };
+        return { get: (key, fallback) => key.startsWith('colors.')
+          ? editor.palettes.get(uri.toString())?.[key.slice(7)] ?? fallback
+          : key === 'customColors' ? editor.customColors.get(uri.toString()) ?? fallback
+          : settings.get(uri.toString()) ?? editor.mode ?? fallback };
       },
+      onDidChangeTextDocument: events.text.subscribe,
       onDidOpenTextDocument: events.open.subscribe,
       onDidCloseTextDocument: events.close.subscribe,
       onDidChangeConfiguration: events.configuration.subscribe,
@@ -87,6 +100,25 @@ function createEditor() {
         };
         watchers.push(watcher);
         return watcher;
+      }
+    },
+    window: {
+      visibleTextEditors: [],
+      onDidChangeVisibleTextEditors: events.visible.subscribe,
+      createTextEditorDecorationType(options) {
+        const style = { options, disposed: false, dispose() {
+          this.disposed = true;
+          for (const textEditor of editor.editors) textEditor.decorations.delete(this);
+        } };
+        editor.styles.push(style);
+        return style;
+      }
+    },
+    DecorationRangeBehavior: { ClosedClosed: 1 },
+    Range: class {
+      constructor(startLine, startCharacter, endLine, endCharacter) {
+        this.start = { line: startLine, character: startCharacter };
+        this.end = { line: endLine, character: endCharacter };
       }
     },
     languages: { setTextDocumentLanguage: editor.setLanguage }

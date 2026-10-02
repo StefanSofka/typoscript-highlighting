@@ -15,7 +15,7 @@
       "patterns": [
         {
           "name": "comment.block.documentation.typoscript",
-          "begin": "/\\*\\*",
+          "begin": "/\\*\\*(?!/)",
           "end": "\\*/",
           "beginCaptures": {
             "0": {

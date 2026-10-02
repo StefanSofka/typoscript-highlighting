@@ -22,7 +22,8 @@ function createGrammar(legacy) {
         patterns: [
           {
             name: 'comment.block.documentation.typoscript',
-            begin: `${commentStart}/\\*\\*`, end: blockEnd,
+            // In /**/, the second star belongs to the closing delimiter.
+            begin: `${commentStart}/\\*\\*(?!/)`, end: blockEnd,
             beginCaptures: { 0: capture('punctuation.definition.comment.begin.typoscript') },
             endCaptures: { 0: capture('punctuation.definition.comment.end.typoscript') },
             patterns: legacy ? [{ include: '#imports' }] : []

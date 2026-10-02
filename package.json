@@ -2,7 +2,7 @@
   "name": "typoscript-highlighting",
   "displayName": "TYPO3 - TypoScript Highlighting",
   "description": "Syntax highlighting for TypoScript files of TYPO3 in VS Code.",
-  "version": "1.0.4",
+  "version": "1.3.0",
   "publisher": "stefan-sofka",
   "author": {
     "name": "Stefan Sofka",
@@ -77,30 +77,204 @@
           "enum": [
             "auto",
             "v11",
-            "v12"
+            "v12",
+            "v13",
+            "v14"
           ],
-          "markdownDescription": "Select which TypoScript comment rules to use. `auto` detects the TYPO3 version from composer files."
+          "markdownDescription": "Select the TYPO3 comment rules. **Auto** detects the version from Composer files. TYPO3 12, 13 and 14 share the modern grammar and the **TypoScript (v12+)** language mode.",
+          "enumItemLabels": [
+            "Auto (Composer detection)",
+            "TYPO3 11",
+            "TYPO3 12",
+            "TYPO3 13",
+            "TYPO3 14"
+          ],
+          "enumDescriptions": [
+            "Detect the TYPO3 version from composer.lock or composer.json.",
+            "Use legacy line-based comment rules.",
+            "Use modern comment rules (TYPO3 12 and later).",
+            "Use modern comment rules for TYPO3 13.",
+            "Use modern comment rules for TYPO3 14."
+          ],
+          "order": 0
+        },
+        "typoscriptHighlighting.colors.comments": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Comments and comment delimiters. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22comments%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 10,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.objectPaths": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Object paths and copy/reference targets. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22objectPaths%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 11,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.values": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Assignment values and quoted strings. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22values%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 12,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.operators": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Assignment, copy/reference, modification, and deletion operators. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22operators%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 13,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.constants": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Constant references such as `{$site.name}`. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22constants%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 14,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.conditions": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Conditions and END/GLOBAL/ELSE keywords. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22conditions%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 15,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.imports": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Import keywords, file paths, and legacy import attributes. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22imports%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 16,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.functions": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Value modification functions such as `addToList`. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22functions%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 17,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.colors.punctuation": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "markdownDescription": "Block braces, value/argument parentheses, and legacy import closing brackets. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22punctuation%22%5D) to choose from a spectrum. Changes apply immediately.",
+          "order": 18,
+          "pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
+          "patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
+        },
+        "typoscriptHighlighting.customColors": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "properties": {
+            "comments": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Comments and comment delimiters. Used by a legacy custom selection from version 1.2.0."
+            },
+            "objectPaths": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Object paths and copy/reference targets. Used by a legacy custom selection from version 1.2.0."
+            },
+            "values": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Assignment values and quoted strings. Used by a legacy custom selection from version 1.2.0."
+            },
+            "operators": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Assignment, copy/reference, modification, and deletion operators. Used by a legacy custom selection from version 1.2.0."
+            },
+            "constants": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Constant references such as `{$site.name}`. Used by a legacy custom selection from version 1.2.0."
+            },
+            "conditions": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Conditions and END/GLOBAL/ELSE keywords. Used by a legacy custom selection from version 1.2.0."
+            },
+            "imports": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Import keywords, file paths, and legacy import attributes. Used by a legacy custom selection from version 1.2.0."
+            },
+            "functions": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Value modification functions such as `addToList`. Used by a legacy custom selection from version 1.2.0."
+            },
+            "punctuation": {
+              "type": "string",
+              "pattern": "^$|^#[0-9a-fA-F]{6}$",
+              "patternErrorMessage": "Use a color in #RRGGBB format, or leave empty for System Default.",
+              "description": "Block braces, value/argument parentheses, and legacy import closing brackets. Used by a legacy custom selection from version 1.2.0."
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "Compatibility for existing `custom` selections from version 1.2.0. New color selections store hex values directly in `typoscriptHighlighting.colors.*`.",
+          "order": 30,
+          "deprecationMessage": "Legacy custom colors from version 1.2.0. Use the individual colors settings or TypoScript Highlighting: Configure Colors instead."
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "typoscriptHighlighting.configureColors",
+        "title": "Configure Colors",
+        "category": "TypoScript Highlighting"
+      }
+    ]
   },
   "activationEvents": [
     "onLanguage:typoscript",
     "onLanguage:typoscript-v11",
-    "onLanguage:typoscript-v12"
+    "onLanguage:typoscript-v12",
+    "onCommand:typoscriptHighlighting.configureColors"
   ],
   "main": "./extension.js",
   "scripts": {
     "build:grammars": "node scripts/build-grammars.js",
-    "check": "node --check extension.js && node --check lib/version.js && node --check lib/controller.js && node scripts/build-grammars.js --check",
+    "check": "node --check extension.js && node --check lib/version.js && node --check lib/controller.js && node --check lib/colors.js && node --check lib/tokenizer.js && node --check lib/color-settings.js && node --check media/color-settings.js && node --check scripts/color-probe.js && node --check test/integration/colors.js && node scripts/build-grammars.js --check",
     "test": "node --test test/*.test.js",
     "test:integration": "node scripts/run-integration.js",
     "vscode:prepublish": "npm run check && npm test",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package",
+    "test:colors": "node scripts/run-integration.js --colors"
   },
   "devDependencies": {
     "@vscode/vsce": "4.0.0",
-    "@vscode/test-electron": "3.1.0",
+    "@vscode/test-electron": "3.1.0"
+  },
+  "dependencies": {
     "vscode-textmate": "9.3.2",
     "vscode-oniguruma": "2.0.1"
   }

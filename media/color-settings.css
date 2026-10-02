@@ -1,0 +1,41 @@
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+main { max-width: 1040px; margin: 0 auto; }
+h1 { font-size: 24px; font-weight: 600; margin: 0 0 10px; }
+h2 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+p { line-height: 1.5; color: var(--vscode-descriptionForeground); margin: 0 0 18px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 18px 0 22px; }
+.toolbar label { font-weight: 600; }
+#status { margin-left: auto; font-size: 12px; color: var(--vscode-descriptionForeground); }
+select, input[type=text] { background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, transparent)); border-radius: 3px; font-family: inherit; padding: 7px 9px; min-height: 32px; }
+select { max-width: 100%; }
+input[type=text] { width: 148px; font-family: var(--vscode-editor-font-family); }
+button { font-family: inherit; color: var(--vscode-button-secondaryForeground, var(--vscode-foreground)); background: var(--vscode-button-secondaryBackground, transparent); border: 1px solid var(--vscode-button-border, transparent); border-radius: 3px; padding: 7px 10px; cursor: pointer; }
+button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, #spectrum:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.layout { display: grid; grid-template-columns: minmax(550px, 1fr) 250px; grid-template-areas: "colors picker"; gap: 22px; align-items: start; }
+#categories { grid-area: colors; }
+.row { display: grid; grid-template-columns: minmax(130px, 1fr) 32px 148px auto; gap: 10px; align-items: center; padding: 14px 10px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-left: 2px solid transparent; }
+.row.selected { border-left-color: var(--vscode-focusBorder); background: var(--vscode-list-hoverBackground); }
+.label { display: block; font-weight: 600; margin-bottom: 4px; }
+.description { color: var(--vscode-descriptionForeground); font-size: 11px; line-height: 1.4; }
+.swatch { width: 32px; height: 32px; padding: 0; border: 1px solid var(--vscode-contrastBorder, var(--vscode-input-border, var(--vscode-foreground))); }
+.swatch.default { background: repeating-linear-gradient(135deg, transparent, transparent 5px, var(--vscode-descriptionForeground) 5px, var(--vscode-descriptionForeground) 6px); }
+.error { grid-column: 3 / -1; color: var(--vscode-errorForeground); font-size: 11px; }
+.error:empty { display: none; }
+input[aria-invalid=true] { border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground)); }
+.picker { grid-area: picker; position: sticky; top: 20px; padding: 18px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 6px; }
+#picker-help { min-height: 42px; font-size: 12px; margin-bottom: 16px; }
+.spectrum { position: relative; width: 100%; height: 210px; border: 1px solid var(--vscode-contrastBorder, var(--vscode-widget-border)); border-radius: 3px; cursor: crosshair; touch-action: none; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
+#marker { pointer-events: none; position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; transform: translate(-50%, -50%); }
+.hue-label { display: block; margin: 18px 0 8px; font-size: 12px; }
+#hue { appearance: none; width: 100%; height: 14px; margin: 0; border-radius: 7px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); cursor: pointer; }
+#hue::-webkit-slider-thumb { appearance: none; width: 16px; height: 20px; border-radius: 4px; background: transparent; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; }
+.keyboard-help { font-size: 11px; margin-top: 16px; }
+.selected-color { display: flex; gap: 12px; align-items: center; }
+#preview { display: inline-block; width: 30px; height: 30px; border-radius: 3px; border: 1px solid var(--vscode-foreground); }
+#color-value { font-size: 13px; }
+@media (max-width: 900px) { body { padding: 20px; } .layout { grid-template-columns: 1fr; grid-template-areas: "picker" "colors"; } .picker { position: static; max-width: 430px; } }
+@media (max-width: 530px) { .row { grid-template-columns: 1fr 32px 148px; } .row .reset { grid-column: 3; } .error { grid-column: 1 / -1; } #status { margin-left: 0; width: 100%; } }
