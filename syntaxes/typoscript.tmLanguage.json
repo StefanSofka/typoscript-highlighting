@@ -1,105 +1,329 @@
 {
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TypoScript (v12+)",
   "scopeName": "source.typoscript",
   "patterns": [
     {
-      "name": "string.value.multiline.typoscript",
-      "begin": "(?<!\\S)([a-zA-Z0-9_\\.]+)\\s*(=|=<|>)\\s*(\\()",
-      "beginCaptures": {
-        "1": { "name": "variable.parameter.typoscript" },
-        "2": { "name": "keyword.operator.equals.typoscript" },
-        "3": { "name": "punctuation.definition.string.begin.typoscript" }
-      },
-      "end": "^\\s*\\)",
-      "endCaptures": {
-        "0": { "name": "punctuation.definition.string.end.typoscript" }
-      },
-      "patterns": [
-        {
-          "match": ".+",
-          "name": "string.value.typoscript"
-        }
-      ]
+      "include": "#comments"
     },
     {
-      "name": "entity.name.assignment.typoscript",
-      "match": "(?<!\\S)([a-zA-Z0-9_\\.]+)\\s*(=|=<|>)\\s*([^\\n]*)",
-      "captures": {
-        "1": { "name": "variable.parameter.typoscript" },
-        "2": { "name": "keyword.operator.equals.typoscript" },
-        "3": { "name": "string.value.typoscript" }
-      }
-    },
-    {
-      "name": "comment.block.documentation.typoscript",
-      "begin": "/\\*\\*",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.comment.begin.typoscript"
-        }
-      },
-      "end": "\\*/",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.comment.end.typoscript"
-        }
-      },
-      "patterns": [
-        {
-          "match": ".",
-          "name": "comment.block.documentation.typoscript"
-        }
-      ]
-    },
-    {
-      "name": "comment.block.typoscript",
-      "begin": "/\\*",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.comment.begin.typoscript"
-        }
-      },
-      "end": "\\*/",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.comment.end.typoscript"
-        }
-      },
-      "patterns": [
-        {
-          "match": ".",
-          "name": "comment.block.typoscript"
-        }
-      ]
-    },
-    {
-      "name": "comment.line.double-slash.typoscript",
-      "match": "//.*$"
-    },
-    {
-      "name": "comment.block.typoscript",
-      "match": "#.*$"
-    },
-    {
-      "name": "keyword.control.import.typoscript",
-      "match": "@import",
-      "captures": {
-        "0": { "name": "keyword.import.typoscript" }
-      }
-    },
-    {
-      "name": "string.path.typoscript",
-      "match": "'[^']+'",
-      "captures": {
-        "0": { "name": "string.path.typoscript" }
-      }
-    },
-    {
-      "name": "keyword.control.block.typoscript",
-      "match": "\\[.*?\\]"
-    },
-    {
-      "name": "keyword.control.endblock.typoscript",
-      "match": "(?<=\\n)\\[end\\]"
+      "include": "#statements"
     }
-  ]
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.documentation.typoscript",
+          "begin": "/\\*\\*",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.begin.typoscript"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.typoscript"
+            }
+          },
+          "patterns": []
+        },
+        {
+          "name": "comment.block.typoscript",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.begin.typoscript"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.typoscript"
+            }
+          },
+          "patterns": []
+        },
+        {
+          "name": "comment.line.double-slash.typoscript",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.line.number-sign.typoscript",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "constants": {
+      "name": "constant.other.typoscript",
+      "match": "\\{\\$(?:[a-zA-Z0-9_.-]|\\\\\\.)+\\}"
+    },
+    "brackets": {
+      "begin": "\\[",
+      "end": "\\]|$",
+      "patterns": [
+        {
+          "name": "string.quoted.single.typoscript",
+          "match": "'(?:\\\\.|[^'\\\\])*'"
+        },
+        {
+          "name": "string.quoted.double.typoscript",
+          "match": "\"(?:\\\\.|[^\"\\\\])*\""
+        },
+        {
+          "include": "#constants"
+        },
+        {
+          "include": "#brackets"
+        }
+      ]
+    },
+    "arguments": {
+      "name": "string.value.typoscript",
+      "begin": "\\(",
+      "end": "\\)|$",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.arguments.begin.typoscript"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.arguments.end.typoscript"
+        }
+      },
+      "patterns": [
+        {
+          "name": "string.quoted.single.typoscript",
+          "match": "'(?:\\\\.|[^'\\\\])*'"
+        },
+        {
+          "name": "string.quoted.double.typoscript",
+          "match": "\"(?:\\\\.|[^\"\\\\])*\""
+        },
+        {
+          "include": "#constants"
+        },
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "imports": {
+      "patterns": [
+        {
+          "name": "meta.import.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*(@import)\\b",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.import.typoscript"
+            }
+          },
+          "patterns": [
+            {
+              "name": "string.path.typoscript",
+              "match": "'(?:\\\\.|[^'\\\\])*'"
+            },
+            {
+              "name": "string.path.typoscript",
+              "match": "\"(?:\\\\.|[^\"\\\\])*\""
+            },
+            {
+              "include": "#comments"
+            }
+          ]
+        },
+        {
+          "name": "meta.import.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*(<INCLUDE_TYPOSCRIPT:)",
+          "end": ">|$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.import.typoscript"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.tag.end.typoscript"
+            }
+          },
+          "patterns": [
+            {
+              "name": "string.path.typoscript",
+              "match": "'(?:\\\\.|[^'\\\\])*'"
+            },
+            {
+              "name": "string.path.typoscript",
+              "match": "\"(?:\\\\.|[^\"\\\\])*\""
+            },
+            {
+              "name": "entity.other.attribute-name.typoscript",
+              "match": "\\b(?:source|extensions)\\b"
+            }
+          ]
+        }
+      ]
+    },
+    "statements": {
+      "patterns": [
+        {
+          "include": "#imports"
+        },
+        {
+          "name": "string.value.multiline.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "punctuation.definition.string.begin.typoscript"
+            }
+          },
+          "end": "^[ \\t]*(\\))",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.string.end.typoscript"
+            }
+          },
+          "contentName": "string.value.typoscript",
+          "patterns": [
+            {
+              "include": "#constants"
+            }
+          ]
+        },
+        {
+          "name": "keyword.control.endblock.typoscript",
+          "match": "(?:^|(?<=\\*/))[ \\t]*\\[(?i:END|GLOBAL)\\]"
+        },
+        {
+          "name": "keyword.control.else.typoscript",
+          "match": "(?:^|(?<=\\*/))[ \\t]*\\[(?i:ELSE)\\]"
+        },
+        {
+          "name": "keyword.control.block.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*(\\[)",
+          "end": "(\\])|$",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.section.condition.begin.typoscript"
+            }
+          },
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.section.condition.end.typoscript"
+            }
+          },
+          "patterns": [
+            {
+              "name": "string.quoted.single.typoscript",
+              "match": "'(?:\\\\.|[^'\\\\])*'"
+            },
+            {
+              "name": "string.quoted.double.typoscript",
+              "match": "\"(?:\\\\.|[^\"\\\\])*\""
+            },
+            {
+              "include": "#constants"
+            },
+            {
+              "include": "#brackets"
+            }
+          ]
+        },
+        {
+          "name": "meta.reference.typoscript",
+          "match": "(?:^|(?<=\\*/))[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*(=<|<)[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "keyword.operator.reference.typoscript"
+            },
+            "3": {
+              "name": "variable.other.reference.typoscript"
+            }
+          }
+        },
+        {
+          "name": "meta.modification.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*(:=)[ \\t]*([a-zA-Z][a-zA-Z0-9_]*)?",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "keyword.operator.modification.typoscript"
+            },
+            "3": {
+              "name": "support.function.typoscript"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#arguments"
+            },
+            {
+              "include": "#comments"
+            }
+          ]
+        },
+        {
+          "name": "entity.name.assignment.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*(=)",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "keyword.operator.equals.typoscript"
+            }
+          },
+          "contentName": "string.value.typoscript",
+          "patterns": [
+            {
+              "include": "#constants"
+            }
+          ]
+        },
+        {
+          "name": "meta.unset.typoscript",
+          "begin": "(?:^|(?<=\\*/))[ \\t]*((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*(>)",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "keyword.operator.unset.typoscript"
+            }
+          },
+          "contentName": "comment.line.ignored.typoscript",
+          "patterns": [
+            {
+              "include": "#comments"
+            }
+          ]
+        },
+        {
+          "name": "meta.block.typoscript",
+          "match": "(?:^|(?<=\\*/))[ \\t]*(?:((?:[a-zA-Z0-9_.-]|\\\\\\.)+)[ \\t]*)?(\\{|\\})",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.typoscript"
+            },
+            "2": {
+              "name": "punctuation.section.block.typoscript"
+            }
+          }
+        }
+      ]
+    }
+  }
 }

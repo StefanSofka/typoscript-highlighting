@@ -2,7 +2,7 @@
   "name": "typoscript-highlighting",
   "displayName": "TYPO3 - TypoScript Highlighting",
   "description": "Syntax highlighting for TypoScript files of TYPO3 in VS Code.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "stefan-sofka",
   "author": {
     "name": "Stefan Sofka",
@@ -40,7 +40,7 @@
         "aliases": [
           "TypoScript (v11)"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration-v11.json"
       },
       {
         "id": "typoscript-v12",
@@ -58,7 +58,7 @@
       },
       {
         "language": "typoscript-v11",
-        "scopeName": "source.typoscript",
+        "scopeName": "source.typoscript.v11",
         "path": "./syntaxes/typoscript-v11.tmLanguage.json"
       },
       {
@@ -72,6 +72,7 @@
       "properties": {
         "typoscriptHighlighting.commentRules": {
           "type": "string",
+          "scope": "resource",
           "default": "auto",
           "enum": [
             "auto",
@@ -90,9 +91,17 @@
   ],
   "main": "./extension.js",
   "scripts": {
-    "vscode:prepublish": "echo \"No TypeScript compilation needed.\""
+    "build:grammars": "node scripts/build-grammars.js",
+    "check": "node --check extension.js && node --check lib/version.js && node --check lib/controller.js && node scripts/build-grammars.js --check",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node scripts/run-integration.js",
+    "vscode:prepublish": "npm run check && npm test",
+    "package": "vsce package --no-dependencies"
   },
-  "dependencies": {
-    "@vscode/vsce": "^3.2.1"
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0",
+    "@vscode/test-electron": "3.1.0",
+    "vscode-textmate": "9.3.2",
+    "vscode-oniguruma": "2.0.1"
   }
 }

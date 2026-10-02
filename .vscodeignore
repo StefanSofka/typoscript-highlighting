@@ -1,0 +1,11 @@
+**
+!package.json
+!README.md
+!LICENSE
+!extension.js
+!language-configuration.json
+!language-configuration-v11.json
+!lib/**
+!syntaxes/**
+!images/**
+!docs/**
