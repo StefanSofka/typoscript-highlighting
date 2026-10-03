@@ -36,14 +36,14 @@ Requires a VS Code-compatible editor with API version **1.70 or newer**. No sepa
 2. Open the Command Palette with **Ctrl+Shift+P** on Windows/Linux or **Cmd+Shift+P** on macOS.
 3. Run **Extensions: Install from VSIX...** and select the downloaded file.
 
-For version 1.3.0, you can instead run either command from the directory containing the download:
+For version 1.3.1, you can instead run either command from the directory containing the download:
 
 ```bash
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.3.0.vsix
+code --install-extension typoscript-highlighting-1.3.1.vsix
 
 # VSCodium
-codium --install-extension typoscript-highlighting-1.3.0.vsix
+codium --install-extension typoscript-highlighting-1.3.1.vsix
 ```
 
 ## Quick start
