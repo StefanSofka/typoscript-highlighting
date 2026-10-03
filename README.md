@@ -23,7 +23,13 @@ This extension provides TextMate syntax highlighting. It does not validate or ex
 
 ## Installation
 
-Build a VSIX from this repository, then install it in VSCodium:
+Download `typoscript-highlighting-1.3.0.vsix` from the [GitHub release](https://github.com/StefanSofka/typoscript-highlighting/releases/tag/v1.3.0), then install it in VSCodium:
+
+```bash
+codium --install-extension typoscript-highlighting-1.3.0.vsix --force
+```
+
+To build the same version from this repository:
 
 ```bash
 npm ci

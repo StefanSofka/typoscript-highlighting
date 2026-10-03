@@ -4,6 +4,7 @@
   "description": "Syntax highlighting for TypoScript files of TYPO3 in VS Code.",
   "version": "1.3.0",
   "publisher": "stefan-sofka",
+  "license": "MIT",
   "author": {
     "name": "Stefan Sofka",
     "email": "stefan.sofka@mailbox.org"
