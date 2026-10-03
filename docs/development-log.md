@@ -231,6 +231,18 @@ The audit also identified a small interaction defect: an invalid draft in a defa
 
 A dedicated Linux CI job now runs the rendered suite under Xvfb and uploads the JSON report and any failure screenshot. README documents the suite, report path, installed-editor selection and extracted-VSIX verification. Project-review documentation records the audited scope and the invalid-draft fix. Version remains 1.3.0 because this feature version had not yet been merged or published. The extracted VSIX passed the same rendered suite in both editors. The final rebuild updates documentation and setting descriptions; its runtime, grammar and picker assets are compared byte-for-byte with the tested archive before merging. No Marketplace or Open VSX publication is included.
 
+## README overhaul on October 3, 2026
+
+Starting revision: `267a5eb`, extension version 1.3.0. The README was rewritten around installation and everyday use, with the feature description checked against the manifest, language configurations, version controller, tokenizer and color-picker host/UI.
+
+The comparison used the official READMEs of [Prettier for VS Code](https://github.com/prettier/prettier-vscode/blob/main/README.md), [VS Code ESLint](https://github.com/microsoft/vscode-eslint/blob/main/README.md) and [vscode-icons](https://github.com/vscode-icons/vscode-icons/blob/master/README.md). The resulting structure puts the purpose and a real editor screenshot first, then installation, first use, configuration, version behavior and troubleshooting. Settings examples use the actual command and manifest keys. Detailed development instructions were moved to `docs/development.md`.
+
+Live registry checks confirmed version 1.3.0 on both Open VSX and the Visual Studio Marketplace. Store links now lead the installation section; downloading a release VSIX is the alternative. Building from source is documented in the development guide. The decorative banner, duplicate installation commands, release test counts and implementation/audit details were removed from the README. Historical verification remains in this log.
+
+The three existing screenshots were visually inspected and retained with descriptive alternative text, captions and links to their full-size images: the code/picker overview, the dark picker and the light System Default view. The guide explains scope precedence, theme reset versus inheritance, legacy file associations, the shared v12+ label for TYPO3 12–14, and literal comment markers in assigned values.
+
+Verification: local links and heading anchors resolve; all external README links returned HTTP 200; JSON examples parse and extension setting values match the manifest; `vsce ls` includes the development guide and all three screenshots; `git diff --check` passes. A Chromium-rendered Markdown preview was inspected at 980 px and 390 px widths. All images loaded and the page had no horizontal overflow. These are documentation changes; runtime code, extension version and published release packages are unchanged.
+
 ## Recording future work
 
 Add a dated entry with the starting revision, concrete task, decisions, changed behavior, checks and remaining issues. Refer to the finding IDs where useful. Update the project review when architecture or supported behavior changes, and distinguish proposed changes from implemented and verified results.
