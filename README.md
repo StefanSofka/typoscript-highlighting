@@ -12,17 +12,15 @@ Version **1.6.0** adds site-set dependencies, typed YAML settings and implicitly
 
 ## Installation
 
-The latest published GitHub release is **1.5.0**. Download **typoscript-highlighting-1.5.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
+Download **typoscript-highlighting-1.6.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
 
 ```bash
 # VSCodium
-codium --install-extension typoscript-highlighting-1.5.0.vsix
+codium --install-extension typoscript-highlighting-1.6.0.vsix
 
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.5.0.vsix
+code --install-extension typoscript-highlighting-1.6.0.vsix
 ```
-
-For the **1.6.0 site-set features** documented below, [build a VSIX from the current source](docs/development.md#build-and-inspect-a-vsix). The published 1.5.0 download provides automatic installation detection, core suggestions and basic YAML setting navigation.
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
 
