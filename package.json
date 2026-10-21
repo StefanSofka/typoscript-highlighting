@@ -1,8 +1,8 @@
 {
 	"name": "typoscript-highlighting",
 	"displayName": "TYPO3 - TypoScript Highlighting",
-	"description": "TypoScript and TSconfig highlighting, import navigation, constants, outline, snippets and TYPO3-aware editing for VS Code and VSCodium.",
-	"version": "1.5.0",
+	"description": "TypoScript and TSconfig highlighting, TYPO3 site sets, typed settings, import navigation and configurable colors for VS Code and VSCodium.",
+	"version": "1.6.0",
 	"publisher": "stefan-sofka",
 	"license": "MIT",
 	"author": {
@@ -395,7 +395,7 @@
 					"scope": "resource",
 					"default": true,
 					"order": 40,
-					"markdownDescription": "Report structural errors, unresolved project imports and version-specific migration hints. Constants and conditions are not evaluated."
+					"markdownDescription": "Report structural errors, unresolved imports, version-specific migration hints and site-set YAML dependency/type errors. Constants, conditions and runtime overrides are not evaluated."
 				},
 				"typoscriptHighlighting.formatting.enabled": {
 					"type": "boolean",
@@ -421,6 +421,16 @@
 				"command": "typoscriptHighlighting.configureLanguageSettings",
 				"title": "Configure Shared Language Settings",
 				"category": "TypoScript Highlighting"
+			},
+			{
+				"command": "typoscriptHighlighting.selectSiteContext",
+				"title": "Select Site Context",
+				"category": "TypoScript Highlighting"
+			},
+			{
+				"command": "typoscriptHighlighting.showSiteSets",
+				"title": "Inspect Site Sets",
+				"category": "TypoScript Highlighting"
 			}
 		]
 	},
@@ -430,7 +440,10 @@
 		"onLanguage:typoscript-v12",
 		"onCommand:typoscriptHighlighting.configureColors",
 		"onCommand:typoscriptHighlighting.showVersion",
-		"onCommand:typoscriptHighlighting.configureLanguageSettings"
+		"onCommand:typoscriptHighlighting.configureLanguageSettings",
+		"onCommand:typoscriptHighlighting.selectSiteContext",
+		"onCommand:typoscriptHighlighting.showSiteSets",
+		"onLanguage:yaml"
 	],
 	"main": "./extension.js",
 	"scripts": {

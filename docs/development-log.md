@@ -282,3 +282,16 @@ Verification: all 226 unit/regression/package-content tests and authored JavaScr
 The integration runner now requires a completion record from the extension host: using a CLI wrapper previously exited successfully without running provider assertions. The documented VSCodium executable is the actual editor binary.
 
 Packaged minimum-version verification also exposed a color-picker disposal race: a renderer can disappear before the extension receives its close event. All webview posts now consume the expected old-editor RPC rejection while reporting unrelated delivery failures; a regression test covers both cases.
+
+## Version 1.6.0: site sets and typed settings, October 21, 2026
+
+Starting revision: `5521df0` on `dev`, extension version 1.5.0. Version 1.6.0 adds site-set dependency navigation, typed settings and a selected site context for shared source files.
+
+- Discover named sets from Composer extensions, standalone extension roots and manifest-free Classic extensions, including symlinks and custom vendor/webroot paths. Only the detected installation's site directory contributes contexts; leftover configuration from the other installation type is ignored.
+- Resolve required/optional dependency graphs, deterministic registry order, per-site closures, duplicate names, missing required sets and cycles. Unused sets stay outside navigation results. The status bar and two commands expose automatic/persisted site selection and load-order inspection with readable project-relative source paths.
+- Compose typed defaults, per-set values and site values from available files, with source history, enum/readonly metadata, list defaults, local aliases and bounded static YAML imports. Separate settings files replace inline values. Custom tags, environment substitution, PHP code, database templates and runtime overrides remain unevaluated.
+- Register YAML definitions, references, links, hover, key/type/value completion and live diagnostics. Mid-name/value completion replaces the existing suffix, retains neighboring YAML syntax and preserves trailing comments. Integration tests apply these edits to actual documents.
+- Follow implicit set and local site TypoScript/TSconfig files, direct `siteSettings:` getters and multiline `insertData` references. Unsaved YAML edits, discarded changes and site-context selection invalidate cached results.
+- Update the README, development guide, architecture review and package-content assertions. Capture and visually review two real VSCodium screenshots showing dependency order and a selected setting beside its typed default.
+
+Verification: authored JavaScript/grammar checks and all 238 regression/package-content tests pass. Native integration passes on VSCodium 1.140.0 and the declared minimum VS Code 1.70.0, covering YAML completion edits, local site sources, multi-site isolation, imported settings, dependency/type diagnostics and Classic symlinked sets. The VSCodium visual suite passes 55 scenarios, 305 token ranges and 6,204 character foreground comparisons. The packaged runtime is checked in both isolated editors. The manifest and lockfile are synchronized to 1.6.0. The README distinguishes the current source from the published 1.5.0 download and includes source-build installation instructions. GitHub releases and extension registries are published separately from the source merge.

@@ -2,7 +2,7 @@
 
 TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Version **1.5.0** automatically detects Composer and Classic TYPO3 installations, including active `typo3_src` symlinks. It adds version-aware core suggestions and YAML site-settings navigation. No version setting is needed for a complete project.
+Version **1.6.0** adds site-set dependencies, typed YAML settings and implicitly loaded TypoScript with a site context for each project. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks. No version setting is needed for a complete project.
 
 [Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
@@ -12,7 +12,7 @@ Version **1.5.0** automatically detects Composer and Classic TYPO3 installations
 
 ## Installation
 
-Download **typoscript-highlighting-1.5.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
+The latest published GitHub release is **1.5.0**. Download **typoscript-highlighting-1.5.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
 
 ```bash
 # VSCodium
@@ -21,6 +21,8 @@ codium --install-extension typoscript-highlighting-1.5.0.vsix
 # Visual Studio Code
 code --install-extension typoscript-highlighting-1.5.0.vsix
 ```
+
+For the **1.6.0 site-set features** documented below, [build a VSIX from the current source](docs/development.md#build-and-inspect-a-vsix). The published 1.5.0 download provides automatic installation detection, core suggestions and basic YAML setting navigation.
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
 
@@ -31,7 +33,8 @@ Requires a VS Code-compatible editor with API version **1.70 or newer**. No sepa
 1. Open your TYPO3 project or Sitepackage folder.
 2. Open a `.typoscript` or `.tsconfig` file. Highlighting starts automatically.
 3. Check the **TYPO3 version indicator** in the status bar. Its tooltip explains the detected version, installation type, source file and any mismatch with the lockfile. Click it to inspect detection.
-4. Ctrl+click an `@import` path, open **Outline**, or invoke completion with **Ctrl+Space**.
+4. For site-set navigation, check the **Site** or **Set** indicator. Click it to choose a site when several sites share your code.
+5. Ctrl+click an `@import` path, open **Outline**, or invoke completion with **Ctrl+Space**.
 
 ## Navigate your project
 
@@ -68,23 +71,56 @@ Definition lookup follows imports and discovers conventional `constants.typoscri
 
 At the start of a statement, completion offers snippets for object blocks, multiline values, imports and conditions. TypoScript files also offer `text`, `coa` and `fluid`; `.tsconfig` files offer `tceform` and `tcedefaults`.
 
-### Core suggestions and site settings
+### Core suggestions
 
 After `page.10 = `, completion suggests common core content objects. After declaring `page.10 = TEXT`, `page.10.` suggests properties such as `value` and `wrap`, including inside object blocks. `config` and explicit `stdWrap` paths have focused suggestions. Each suggestion links to the TYPO3 reference. PAGEVIEW suggestions respect its introduction in TYPO3 13.1 when the exact version is known. Custom objects and properties remain valid.
 
-Constant navigation, hover and completion also read scalar settings from:
+### Site sets and typed settings
+
+For TYPO3 site sets, the extension reads the declared names in `Configuration/Sets/<set>/config.yaml`, resolves required and available optional dependencies, and shows sets in dependency load order. Hidden sets remain available as dependencies. Set names identify the configuration, independently of Composer package names and directory names. See the [TYPO3 site-set reference](https://docs.typo3.org/m/typo3/reference-coreapi/13.4/en-us/ApiOverview/SiteHandling/SiteSets.html).
+
+The **Site** or **Set** indicator in the status bar identifies the context used for navigation:
+
+- A file inside a site's directory uses that site.
+- A set used by one site automatically uses that site's context. Shared sets otherwise use their own dependencies and defaults.
+- Other project files use the only site when there is one. With several sites, run **TypoScript Highlighting: Select Site Context** or click the indicator to choose one.
+
+The choice is remembered per project. Select **Automatic file context** to remove it; files inside a site's directory always use their containing site. **TypoScript Highlighting: Inspect Site Sets** lists the selected site's sets in load order and opens their configuration files.
+
+[![Site-set dependencies and their source files in load order.](images/screenshots/site-sets-load-order.png)](images/screenshots/site-sets-load-order.png)
+
+Definition and reference searches include the selected sets' `constants.typoscript`, `setup.typoscript` and `page.tsconfig`, their imports, and the corresponding local site files. TypoScript and TSconfig sources stay separate. Unused sets and other sites do not contribute candidates.
+
+Constant navigation, hover and completion read settings from:
 
 - Composer sites: `config/sites/<site>/settings.yaml` and the `settings` section of `config.yaml`.
 - Classic sites: `typo3conf/sites/<site>/settings.yaml` and the `settings` section of `config.yaml`.
-- Site sets: `Configuration/Sets/<set>/settings.yaml` and scalar defaults in `settings.definitions.yaml`.
+- Selected site sets: `Configuration/Sets/<set>/settings.yaml`, inline `settings` in `config.yaml`, and defaults in `settings.definitions.yaml`.
 
-Both dotted maps and nested settings trees work. Hover labels definitions and defaults with their source files; several sites may define the same key. These are project candidates, not a reconstructed active site or final runtime value. YAML aliases, custom tags, imports and set dependency order are not resolved. Unsaved YAML edits update navigation and hover.
+Both dotted maps and nested settings trees work, including list values and bounded local YAML aliases. Each set contributes its defaults followed by its own values; the selected site's values follow the sets. A provider's `settings.yaml` replaces its inline `settings` section. Hover identifies the selected static value, type, description, allowed values, defaults and source history. Unsaved YAML edits update the results.
 
-[![Peek Definition opens YAML site settings and set defaults from TypoScript.](images/screenshots/site-settings-navigation.png)](images/screenshots/site-settings-navigation.png)
+The same navigation works with direct getters and `insertData` references, including multiline values:
+
+```typoscript
+page.10.data = siteSettings:site.title
+page.20.value = {siteSettings:site.title}
+page.20.insertData = 1
+page.30.value = {$site.title}
+```
+
+In YAML, **Go to Definition**, **Find All References**, links and completion connect dependency names to their set configurations and setting keys to their typed definitions. Completion offers setting types, booleans, enum values and known setting keys. Replacing a name preserves surrounding YAML syntax; replacing a value preserves its trailing comment.
+
+[![Typed site settings show the selected value, its default and source history.](images/screenshots/site-sets-settings.png)](images/screenshots/site-sets-settings.png)
+
+Static YAML imports support relative, absolute and `EXT:` paths. Filename wildcards require `glob: true`; `ignore_missing: true` permits an absent resource. Cycles and unresolved resources receive diagnostics. Set `config.yaml` and `settings.definitions.yaml` do not process imports. See [TYPO3 setting definitions](https://docs.typo3.org/m/typo3/reference-coreapi/13.4/en-us/ApiOverview/SiteHandling/SiteSettingDefinitions.html) for types and enum syntax.
+
+The selected value describes the available static files. Environment placeholders, custom YAML tags, conditions, database templates and runtime overrides are not evaluated. A `readonly` setting can still be edited in YAML; that flag controls TYPO3's backend editor.
 
 ### Diagnostics and migration
 
 The Problems view reports incomplete object blocks, multiline values, comments and condition brackets, imports that cannot be resolved in the project, and relevant legacy import syntax. Conditions may end implicitly at the end of a file, as TYPO3 allows.
+
+Site-set YAML diagnostics identify malformed configuration, missing required dependencies, duplicate set names, dependency/import cycles, unknown setting types and incompatible values. Missing optional dependencies are allowed. Enum warnings are advisory; they do not discard an otherwise valid typed value.
 
 `<INCLUDE_TYPOSCRIPT: …>` is deprecated since TYPO3 13.4 and removed in TYPO3 14. For a simple compatible file import, **Quick Fix → Replace with @import** performs the migration. Imports with extra attributes or incompatible file types require manual migration.
 
@@ -174,7 +210,7 @@ Search Settings for `typoscriptHighlighting`. All extension options can be confi
 | `typoscriptHighlighting.colors.*` | `""` | Base foreground colors for nine syntax categories. |
 | `typoscriptHighlighting.darkColors` | `{}` | Optional category overrides for dark themes. |
 | `typoscriptHighlighting.lightColors` | `{}` | Optional category overrides for light themes. |
-| `typoscriptHighlighting.diagnostics.enabled` | `true` | Structural errors, project import warnings and migration hints. |
+| `typoscriptHighlighting.diagnostics.enabled` | `true` | Structural errors, project import warnings, migration hints and site-set YAML diagnostics. |
 | `typoscriptHighlighting.formatting.enabled` | `false` | Opt in to conservative indentation formatting. |
 
 The nine category keys are `comments`, `objectPaths`, `values`, `operators`, `constants`, `conditions`, `imports`, `functions` and `punctuation`.
@@ -234,6 +270,10 @@ Check the selected save scope, Base/Dark/Light palette and the row's origin/over
 ### An import cannot be resolved
 
 Check that the extension is available in the detected installation. Its Composer extension key or Classic directory name must match the `EXT:` path. Modern imports use `./` or `EXT:`, a quoted path and wildcards only in the filename. The extension does not run TYPO3 to discover database or backend-managed configuration.
+
+### A setting shows a value from a different site
+
+Check the **Site** or **Set** indicator and run **TypoScript Highlighting: Select Site Context** to choose the intended site. **Automatic file context** removes a saved choice. A file inside a site's directory always uses that site; a shared set without a selected site uses its own defaults and dependencies. Hover identifies the context and source of each candidate.
 
 For update errors, open **View → Output → TypoScript Highlighting**. When [reporting an issue](https://github.com/StefanSofka/typoscript-highlighting/issues/new), include a small example, TYPO3/editor versions, version-indicator source, relevant settings and a screenshot.
 

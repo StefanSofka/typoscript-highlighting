@@ -13,7 +13,9 @@ test('VSIX file selection contains all runtime files and excludes development to
     'node_modules/vscode-oniguruma/release/main.js', 'node_modules/vscode-oniguruma/release/onig.wasm'
   ];
   engineFiles.push('node_modules/yaml/package.json', 'node_modules/yaml/LICENSE', 'node_modules/yaml/dist/index.js');
-  for (const file of ['extension.js', 'lib/controller.js', 'lib/version.js', 'lib/colors.js', 'lib/tokenizer.js', 'lib/color-settings.js', 'media/color-settings.js', 'media/color-settings.css', 'language-configuration.json', 'language-configuration-v11.json', 'syntaxes/typoscript.tmLanguage.json', 'syntaxes/typoscript-v11.tmLanguage.json', 'README.md', 'LICENSE', 'package.json', 'images/icon.png', ...engineFiles]) assert.ok(files.includes(file), file);
+  for (const file of ['extension.js', 'lib/controller.js', 'lib/version.js', 'lib/colors.js', 'lib/tokenizer.js', 'lib/color-settings.js',
+    'lib/project.js', 'lib/site-settings.js', 'lib/site-sets.js', 'lib/site-set-features.js', 'lib/site-context.js',
+    'media/color-settings.js', 'media/color-settings.css', 'language-configuration.json', 'language-configuration-v11.json', 'syntaxes/typoscript.tmLanguage.json', 'syntaxes/typoscript-v11.tmLanguage.json', 'README.md', 'LICENSE', 'package.json', 'images/icon.png', ...engineFiles]) assert.ok(files.includes(file), file);
   assert.ok(files.every((file) => engineFiles.includes(file) || file.startsWith('node_modules/yaml/dist/')
     || /^(?:package\.json|README\.md|LICENSE|extension\.js|language-configuration(?:-v11)?\.json|lib\/|media\/|syntaxes\/|images\/|docs\/)/.test(file)), JSON.stringify(files));
   assert.ok(files.every((file) => !file.endsWith('.vsix')));

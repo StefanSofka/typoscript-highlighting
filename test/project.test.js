@@ -1,28 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path').posix;
-const { createProject } = require('../lib/project');
-const { createEditor, Uri } = require('./helpers/editor');
+const { Uri } = require('./helpers/editor');
+const { setupProject } = require('./helpers/project');
 function setup(t) {
-  const editor = createEditor();
-  const root = Uri.file('/site');
-  editor.vscode.FileType = { File: 1, Directory: 2 };
-  editor.vscode.workspace.workspaceFolders = [{ uri: root }];
-  editor.vscode.workspace.getWorkspaceFolder = () => ({ uri: root });
-  editor.vscode.workspace.findFiles = async (pattern) => [...editor.files.keys()]
-    .filter((key) => key.startsWith(pattern.baseUri.toString().replace(/\/$/, '') + '/'))
-    .filter((key) => pattern.pattern.includes('composer.json') ? key.endsWith('/composer.json') : pattern.pattern.includes('.yaml') ? key.endsWith('.yaml') : /(?:\/constants|\.constants)\.typoscript$/.test(key))
-    .map((key) => Uri.file(key.slice('file://'.length)));
-  editor.vscode.workspace.fs.stat = async (uri) => {
-    if (editor.files.has(uri.toString())) return { type: 1 };
-    if ([...editor.files.keys()].some((key) => key.startsWith(uri.toString().replace(/\/$/, '') + '/'))) return { type: 2 };
-    throw Object.assign(new Error('Missing'), { code: 'FileNotFound' });
-  };
-  const project = createProject(editor.vscode, { getInfo: () => ({ root, ...editor.projectInfo }) }, assert.fail);
-  t.after(() => project.dispose());
-  const document = editor.document('/site/setup.typoscript', 'typoscript-v12');
-  editor.put('/site/packages/site/composer.json', { type: 'typo3-cms-extension', name: 'vendor/site', extra: { 'typo3/cms': { 'extension-key': 'my_site' } } });
-  return { editor, project, document };
+  const fixture = setupProject(t);
+  fixture.editor.put('/site/packages/site/composer.json', { type: 'typo3-cms-extension', name: 'vendor/site', extra: { 'typo3/cms': { 'extension-key': 'my_site' } } });
+  return fixture;
 }
 
 test('EXT and relative imports resolve deterministically and reject directory traversal', async (t) => {
@@ -86,8 +70,11 @@ test('Classic EXT imports use local and system directory names without Composer 
 test('site settings use the detected roots, include set defaults and refresh unsaved YAML', async (t) => {
   const { editor, project, document } = setup(t);
   editor.projectInfo = { webRoot: Uri.file('/site/www'), vendorRoot: Uri.file('/site/dependencies') };
+  editor.put('/site/www/typo3conf/sites/main/config.yaml', 'dependencies: [vendor/main]');
+  editor.put('/site/packages/site/Configuration/Sets/Main/config.yaml', 'name: vendor/main\ndependencies: [vendor/library]');
+  editor.put('/site/dependencies/vendor/library/Configuration/Sets/Library/config.yaml', 'name: vendor/library');
   editor.put('/site/www/typo3conf/sites/main/settings.yaml', 'site.title: Website from YAML');
-  editor.put('/site/packages/site/Configuration/Sets/Main/settings.definitions.yaml', 'settings:\n  site.title:\n    default: Default title\n    label: Website title');
+  editor.put('/site/packages/site/Configuration/Sets/Main/settings.definitions.yaml', 'settings:\n  site.title:\n    type: string\n    default: Default title\n    label: Website title');
   editor.put('/site/dependencies/vendor/library/composer.json', { type: 'typo3-cms-extension', name: 'vendor/library' });
   editor.put('/site/dependencies/vendor/library/Configuration/Sets/Library/settings.yaml', 'library.name: Library');
   let definitions = await project.constantDefinitions(document);

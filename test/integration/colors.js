@@ -223,7 +223,10 @@ async function run() {
   await vscode.commands.executeCommand('workbench.view.explorer');
   await vscode.commands.executeCommand('outline.focus');
   await stage('project navigation and outline', { screenshot: 'project-navigation.png' });
-  if (process.env.TYPOSCRIPT_SCREENSHOT_DIR) await require('./installation').run(api, stage);
+  if (process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
+    await require('./installation').run(api, stage);
+    await require('./site-sets').run(api, stage);
+  }
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await stage('complete', { editorVersion: vscode.version,
     extensionVersion: vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting').packageJSON.version });

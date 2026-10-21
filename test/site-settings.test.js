@@ -18,9 +18,10 @@ test('set definitions expose scalar defaults and documentation; site config expo
   assert.deepEqual(config.map((node) => node.path), ['contact.email']);
 });
 
-test('aliases, custom tags, sequences, duplicate keys and imports are never resolved as scalar settings', () => {
+test('bounded aliases and lists are readable; custom tags, duplicate keys and import keys are not settings', () => {
   const text = 'original: &value hello\nalias: *value\nenv: !env SOME_SECRET\nitems: [one, two]\nimports:\n - resource: missing.yaml\n';
   const nodes = parseSiteSettings(text, '/settings.yaml');
-  assert.deepEqual(nodes.map((node) => node.path), ['original']);
+  assert.deepEqual(nodes.map((node) => node.path), ['original', 'alias', 'items']);
+  assert.deepEqual(nodes[2].rawValue, ['one', 'two']);
   assert.deepEqual(parseSiteSettings('site.title: First\nsite.title: Second', '/settings.yaml'), []);
 });
