@@ -23,6 +23,9 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        vscode: ['1.70.0', 'stable']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +34,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: xvfb-run -a npm run test:integration
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode }}
 
   colors:
     runs-on: ubuntu-latest

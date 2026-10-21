@@ -16,8 +16,8 @@ npm test
 
 | Command | Purpose |
 | --- | --- |
-| `npm run check` | Check JavaScript syntax and ensure generated grammars are current. |
-| `npm test` | Run version-detection, controller, color, picker-host, manifest, package-content and TextMate regression tests. |
+| `npm run check` | Check every authored JavaScript file and ensure generated grammars are current. |
+| `npm test` | Run version, lifecycle, incremental tokenization, structure, project imports, settings, palette, manifest and package regression tests. |
 | `npm run test:integration` | Launch a separate editor and test the extension in temporary TYPO3 projects. |
 | `npm run test:colors` | Verify rendered syntax colors and operate the real picker in an isolated editor. |
 | `npm run build:grammars` | Regenerate both TextMate grammars. |
@@ -26,6 +26,8 @@ npm test
 ## Editor integration tests
 
 The integration runner creates temporary TYPO3 11, 12, 13 and 14 Composer projects and an isolated editor profile. It tests project detection, Composer watcher updates, folder settings, manual language selection, comment toggling, color settings/reset, the picker command and explicit version settings.
+
+The provider suite also checks real outline entries, folding, relative and EXT wildcard links, constant definitions/references/hover/completion, contextual snippets, diagnostics, migration edits and idempotent CRLF formatting. Tests use public editor commands when available; VS Code 1.70 predates the public folding-provider test command, so that check runs on current editors while structural folding is covered by unit tests on every runtime.
 
 VS Code is downloaded by default. To use an installed editor, point `VSCODE_EXECUTABLE_PATH` at its executable. For example, when VSCodium is installed at this path:
 
@@ -52,8 +54,19 @@ Reports default to `.vscode-test/color-results.json`. Failed runs attempt to sav
 | Environment variable | Purpose |
 | --- | --- |
 | `VSCODE_EXECUTABLE_PATH` | Select an installed editor executable. |
+| `VSCODE_VERSION` | Download a particular VS Code build, such as `1.70.0`, when no executable is supplied. |
 | `TYPOSCRIPT_COLOR_REPORT` | Choose the rendered-color JSON report path. |
 | `TYPOSCRIPT_EXTENSION_PATH` | Load an extracted VSIX's extension directory to test packaged runtime files. |
+| `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real dark/light picker, editor and outline screenshots during the color suite. |
+
+To verify the declared minimum and regenerate documentation screenshots:
+
+```bash
+VSCODE_VERSION=1.70.0 npm run test:integration
+VSCODE_EXECUTABLE_PATH=/opt/vscodium-bin/codium TYPOSCRIPT_SCREENSHOT_DIR=images/screenshots npm run test:colors
+```
+
+Screenshot runs use a fixed 1600 × 1100 viewport. Dedicated picker captures maximize the active group after color assertions, then restore the editor layout. Inspect the PNGs before committing documentation changes.
 
 For previous editor versions, scenario counts and audit results, see the [release verification log](development-log.md#version-130-release-color-audit-on-october-2-2026).
 
@@ -72,6 +85,6 @@ npx --no-install vsce ls --tree
 
 The package includes runtime modules, picker assets, language configurations, grammars, images and documentation. The two runtime token engines include Oniguruma's WASM binary and their license notices. `.vscodeignore` allowlists the required files; development tools and tests are excluded. Building a VSIX does not publish it to an extension registry.
 
-GitHub Actions runs regression checks and packaging on Node.js 22, 24 and 26, plus integration and rendered-color tests on Linux. The color job uploads its JSON report and any failure screenshot.
+GitHub Actions runs regression checks and packaging on Node.js 22, 24 and 26, integration on VS Code 1.70.0 and stable, and rendered-color checks on stable. The color job uploads its JSON report and any failure screenshot.
 
 See the [project review](project-review.md) for architecture and resolved findings, and the [development log](development-log.md) for investigation records.

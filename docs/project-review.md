@@ -1,5 +1,19 @@
 # TypoScript Extension Project Review
 
+## Version 1.4.0: project editing and settings
+
+The extension now includes a structural parser and editor providers alongside the TextMate grammars. `lib/parser.js` analyzes objects, conditions, literal values, comments, imports and constant references without evaluating TYPO3. `lib/project.js` resolves relative/EXT imports, discovers extension Composer metadata, follows import graphs with cycle protection, and searches project references. `lib/features.js` exposes outline, folding, links, completion, definitions, references, hover, diagnostics, quick fixes and opt-in indentation formatting. `lib/snippets.js` separates setup and TSconfig suggestions.
+
+`lib/language.js` centralizes language IDs and target-version compatibility. `lib/editor.js` supplies the source-aware version indicator and an explicit command to copy generic language options into a shared override. Separate grammar IDs remain necessary for mixed legacy/modern TextMate projects; the extension does not silently rewrite user editor settings.
+
+The controller remembers whether a document's language was automatic or manually pinned in workspace storage, including when a forced version temporarily changes the applied grammar. Directory dependencies release Composer watchers as documents close. Version results retain installed versions, Composer constraints and source URIs; ambiguous lock versions retain their actual source rather than naming an absent manifest.
+
+Color tokenization reuses unchanged line states and stops when a changed region converges with the cached suffix. `lib/palette.js` centralizes categories, scope origins and theme palette inheritance. The picker supports explicit theme reset, removal of local overrides, bulk operations, bounded dialog undo, remembered User/Workspace/Folder destinations, optional dark/light palettes, a preview and contrast feedback. User settings are the first-use destination. Existing hex and legacy custom settings remain compatible.
+
+Project discovery is bounded: up to 1,000 extension manifests, 200 conventional constants files, 300 imported sources and 1,000 project reference candidates per lookup. Imported vendor sources remain available; the broad reference scan excludes vendor and generated directories. Cancellation and document versions prevent obsolete diagnostics. Runtime values, database templates and site-settings YAML are not evaluated.
+
+The sections below document the architecture and release history through 1.3.1. Current usage and configuration are in the README.
+
 This document describes the extension's architecture and tracks the findings from the initial review. Version 1.0.4 repairs the identified runtime, grammar, configuration, and packaging defects and adds automated regression and editor integration tests.
 
 Version 1.1.0 also fixes empty block comments (`/**/`), explicitly verifies the shared modern comment mode for TYPO3 13.4 and 14.3, and adds optional category colors with System Default as the default. The follow-up results are recorded in the [development log](development-log.md#issue-1-follow-up-on-october-2-2026).

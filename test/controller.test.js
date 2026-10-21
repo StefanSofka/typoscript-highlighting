@@ -198,3 +198,58 @@ test('workspace changes refresh detection and disposal releases listeners and wa
   await controller.refresh();
   assert.equal(editor.documents[0].languageId, 'typoscript-v12');
 });
+
+test('automatic modes survive controller restart while explicit manual modes remain pinned', async () => {
+  const editor = createEditor();
+  const memory = new Map();
+  const storage = { get: (key, fallback) => memory.get(key) ?? fallback, update: async (key, value) => { memory.set(key, value); } };
+  editor.put('/site/composer.lock', { packages: [{ name: 'typo3/cms-core', version: '11.5.42' }] });
+  editor.document('/site/setup.typoscript');
+  let controller = createController(editor.vscode, assert.fail, storage);
+  await controller.refresh(); await controller.whenIdle(); controller.dispose();
+  editor.put('/site/composer.lock', { packages: [{ name: 'typo3/cms-core', version: '13.4.0' }] });
+  controller = createController(editor.vscode, assert.fail, storage);
+  await controller.refresh(); await controller.whenIdle();
+  assert.equal(editor.documents[0].languageId, 'typoscript-v12');
+  await editor.setLanguage(editor.documents[0], 'typoscript-v11');
+  await controller.whenIdle(); controller.dispose();
+  controller = createController(editor.vscode, assert.fail, storage);
+  await controller.refresh();
+  assert.equal(editor.documents[0].languageId, 'typoscript-v11');
+  controller.dispose();
+});
+
+test('closing the last document releases shared Composer watchers and reopening detects changes', async () => {
+  const editor = createEditor();
+  const controller = createController(editor.vscode, assert.fail);
+  editor.document('/site/sub/setup.typoscript');
+  editor.document('/site/sub/constants.typoscript');
+  await controller.refresh();
+  const close = () => { const document = editor.documents.shift(); document.isClosed = true; editor.events.close.fire(document); };
+  close();
+  assert.ok(editor.watchers.some((watcher) => !watcher.disposed));
+  close();
+  assert.ok(editor.watchers.every((watcher) => watcher.disposed));
+  editor.put('/site/composer.json', { require: { 'typo3/cms-core': '^11.5' } });
+  editor.document('/site/sub/setup.typoscript');
+  await controller.refresh();
+  assert.equal(editor.documents[0].languageId, 'typoscript-v11');
+  controller.dispose();
+});
+
+test('restart during a forced setting preserves both automatic and manual origins', async () => {
+  for (const manual of [false, true]) {
+    const editor = createEditor(), memory = new Map();
+    const storage = { get: (key, fallback) => memory.get(key) ?? fallback, update: async (key, value) => { memory.set(key, value); } };
+    editor.put('/site/composer.json', { require: { 'typo3/cms-core': '^13.4' } });
+    editor.document('/site/setup.typoscript', manual ? 'typoscript-v11' : 'typoscript');
+    let controller = createController(editor.vscode, assert.fail, storage);
+    await controller.refresh(); await controller.whenIdle();
+    editor.mode = 'v14'; await controller.refresh(); await controller.whenIdle(); controller.dispose();
+    controller = createController(editor.vscode, assert.fail, storage);
+    await controller.refresh(); await controller.whenIdle();
+    editor.mode = 'auto'; await controller.refresh();
+    assert.equal(editor.documents[0].languageId, manual ? 'typoscript-v11' : 'typoscript-v12');
+    controller.dispose();
+  }
+});
