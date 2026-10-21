@@ -19,6 +19,15 @@ test('all manifest resources exist and grammar scopes match their files', () => 
   }
 });
 
+test('Marketplace icon contains PNG image data with supported dimensions', () => {
+  const icon = fs.readFileSync(path.join(__dirname, '..', manifest.icon));
+  assert.equal(path.extname(manifest.icon).toLowerCase(), '.png');
+  assert.deepEqual(icon.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), 'The icon must be a real PNG, not another format with a .png extension');
+  assert.equal(icon.readUInt32BE(8), 13, 'PNG must start with its complete image header');
+  assert.equal(icon.toString('ascii', 12, 16), 'IHDR');
+  assert.ok(icon.readUInt32BE(16) >= 128 && icon.readUInt32BE(20) >= 128, 'Marketplace icons must be at least 128 pixels wide and high');
+});
+
 test('runtime dependencies contain the token engines and static YAML parser', () => {
   assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['vscode-oniguruma', 'vscode-textmate', 'yaml']);
   assert.ok(manifest.devDependencies['@vscode/vsce']);
