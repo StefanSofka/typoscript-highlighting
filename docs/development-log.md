@@ -246,3 +246,20 @@ Verification: local links and heading anchors resolve; all external README links
 ## Recording future work
 
 Add a dated entry with the starting revision, concrete task, decisions, changed behavior, checks and remaining issues. Refer to the finding IDs where useful. Update the project review when architecture or supported behavior changes, and distinguish proposed changes from implemented and verified results.
+
+## Version 1.4.0: project editing and settings, October 21, 2026
+
+Implemented the follow-up review on the `dev` branch:
+
+- Persisted automatic/manual language origins, including restart while a version is temporarily forced; released unused shared Composer watchers.
+- Added `typo3Version` with compatibility for `commentRules`, source-aware status and a shared-language-settings command.
+- Reused TextMate line states after edits, including inserted/deleted lines and multiline state convergence.
+- Added structural analysis, outline, region/object/condition/value folding, relative/EXT import links and wildcard selection.
+- Added project constant definitions, references, hover and completion, plus contextual setup/TSconfig snippets.
+- Added structural/import/version diagnostics, safe legacy-import migration and opt-in indentation-only formatting that preserves values and EOLs.
+- Added explicit color inheritance, local theme resets, scope origin/override labels, bulk actions, undo, remembered scope, dark/light palettes, preview and contrast feedback.
+- Extended syntax checks to all authored JavaScript and CI integration coverage to VS Code 1.70.0 and stable.
+
+Verification includes unit/regression/package-content tests, native provider integration on VSCodium 1.140 and VS Code 1.70.0, and rendered foreground comparisons with real picker interaction. Documentation screenshots are captured from the isolated VSCodium instance and visually reviewed. Screenshot-only stages maximize the picker after foreground assertions, then restore the editor layout.
+
+The extension remains a source-oriented editing assistant. It does not evaluate conditions, execute TYPO3, load database templates or reconstruct the final effective runtime configuration. Formatting is disabled by default and changes only indentation on recognized code lines in structurally complete documents.

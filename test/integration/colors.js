@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const vscode = require('vscode');
 const { PALETTE, fixture, checks } = require('./color-fixture');
+const DARK_PALETTE = { comments: '#7FB069', objectPaths: '#82AAFF', values: '#EBCB8B', operators: '#C099FF', constants: '#C4A7E7', conditions: '#E899C0', imports: '#78C7BD', functions: '#D8AA72', punctuation: '#B7C3D0' };
 
 async function run() {
   const root = process.env.TYPOSCRIPT_TEST_DIRECTORY;
@@ -13,12 +14,16 @@ async function run() {
   const uris = new Map();
   const native = vscode.workspace.getConfiguration('editor').inspect('tokenColorCustomizations');
   async function stage(name, data = {}) {
+    const separateScreenshot = data.maximize && process.env.TYPOSCRIPT_SCREENSHOT_DIR;
     for (const editor of vscode.window.visibleTextEditors) {
       editor.revealRange(new vscode.Range(0, 0, 0, 0), vscode.TextEditorRevealType.AtTop);
     }
     if (api) await api.whenIdle();
+    if (data.screenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
+      await vscode.commands.executeCommand('notifications.clearAll');
+    }
     const id = ++sequence;
-    await fs.writeFile(`${stateFile}.tmp`, JSON.stringify({ id, name, ...data }));
+    await fs.writeFile(`${stateFile}.tmp`, JSON.stringify({ id, name, ...data, ...(separateScreenshot ? { screenshot: undefined } : {}) }));
     await fs.rename(`${stateFile}.tmp`, stateFile);
     const deadline = Date.now() + 40000;
     while (Date.now() < deadline) {
@@ -30,6 +35,12 @@ async function run() {
           if (api) await api.whenIdle();
           assert.deepEqual(vscode.workspace.getConfiguration('editor').inspect('tokenColorCustomizations'), native);
           console.log(`PASS rendered colors: ${name}`);
+          if (separateScreenshot) {
+            if (data.palette === 'dark') await stage('dark palette editor preview', { screenshot: 'custom-colors-dark.png' });
+            await vscode.commands.executeCommand('workbench.action.maximizeEditorHideSidebar');
+            await stage(`${name} screenshot`, { screenshot: data.screenshot });
+            await vscode.commands.executeCommand('workbench.action.evenEditorWidths');
+          }
           return;
         }
       } catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
@@ -57,6 +68,10 @@ async function run() {
   await vscode.workspace.getConfiguration('editor').update('bracketPairColorization.enabled', true, vscode.ConfigurationTarget.Global);
   for (const major of [11, 12, 13, 14]) {
     const directory = path.join(root, `v${major}`);
+    const site = path.join(directory, 'packages', 'site');
+    await fs.mkdir(site, { recursive: true });
+    await fs.writeFile(path.join(site, 'composer.json'), JSON.stringify({ name: 'example/site', type: 'typo3-cms-extension', extra: { 'typo3/cms': { 'extension-key': 'site' } } }));
+    await fs.writeFile(path.join(site, 'setup.typoscript'), '# Imported site configuration\n');
     await fs.writeFile(path.join(directory, 'composer.json'), JSON.stringify({ require: { 'typo3/cms-core': `^${major}.0` } }));
     const uri = vscode.Uri.file(path.join(directory, major === 13 ? 'colors.tsconfig' : 'colors.typoscript'));
     uris.set(major, uri);
@@ -140,8 +155,12 @@ async function run() {
   await palette(14, {});
   await stage('theme change reset restores current theme exactly', { major: 14, restore: 'dark-14' });
 
+  await vscode.commands.executeCommand('workbench.action.joinAllGroups');
+  await vscode.commands.executeCommand('workbench.action.closeSidebar');
+  await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
   await vscode.commands.executeCommand('typoscriptHighlighting.configureColors', 'comments');
-  await stage('picker UI enters all nine hex colors and adjusts the spectrum', { ...rendered(14), action: 'picker', baselineKey: 'dark-14' });
+  await stage('picker UI enters all nine hex colors and adjusts the spectrum', { ...rendered(14), action: 'picker', baselineKey: 'dark-14',
+    folderId: `folder:${vscode.workspace.getWorkspaceFolder(uris.get(14)).uri.toString()}` });
   assert.equal(config(14).get('colors.comments'), '#BF3030');
   for (const [category, color] of Object.entries(PALETTE)) if (category !== 'comments') assert.equal(config(14).get(`colors.${category}`), color);
   await stage('picker UI resets all nine categories to System Default', { major: 14, action: 'picker-reset', restore: 'dark-14' });
@@ -157,6 +176,33 @@ async function run() {
   await comment(14, undefined, vscode.ConfigurationTarget.Workspace);
   await comment(14, undefined, vscode.ConfigurationTarget.WorkspaceFolder);
   await stage('scope picker cleanup restores the theme', { major: 14, restore: 'dark-14' });
+  await comment(14, '#112233', vscode.ConfigurationTarget.Global);
+  await comment(14, '#445566', vscode.ConfigurationTarget.Workspace);
+  await comment(14, '#778899', vscode.ConfigurationTarget.WorkspaceFolder);
+  await stage('picker inheritance removes only the folder override', { ...rendered(14, { comments: '#445566' }), action: 'picker-inherit' });
+  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, undefined);
+  await stage('picker explicit theme masks inherited color', { major: 14, restore: 'dark-14', onlyLine: 0, action: 'picker-theme' });
+  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, '');
+  await stage('picker undo restores inheritance', { ...rendered(14, { comments: '#445566' }), action: 'picker-undo' });
+  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, undefined);
+  await stage('picker bulk theme reset restores all categories', { major: 14, restore: 'dark-14', action: 'picker-bulk-theme' });
+  await stage('picker bulk undo restores prior scope values', { ...rendered(14, { comments: '#445566' }), action: 'picker-undo' });
+  await stage('picker bulk inheritance preserves workspace colors', { ...rendered(14, { comments: '#445566' }), action: 'picker-bulk-inherit' });
+  for (const category of Object.keys(PALETTE)) assert.equal(config(14).inspect(`colors.${category}`).workspaceFolderValue, undefined);
+  await comment(14, undefined, vscode.ConfigurationTarget.Global);
+  await comment(14, undefined, vscode.ConfigurationTarget.Workspace);
+  await stage('picker dark palette applies without changing base colors', { ...rendered(14, DARK_PALETTE), action: 'picker-palette', palette: 'dark', paletteColors: DARK_PALETTE, screenshot: 'color-picker-dark.png', maximize: true });
+  assert.deepEqual(config(14).get('darkColors'), DARK_PALETTE);
+  assert.equal(config(14).get('colors.comments'), '');
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
+  const lightPalette = { comments: '#467240', objectPaths: '#174EA6', values: '#91331D', operators: '#7B287D', constants: '#6F3BA0', conditions: '#8B3A62', imports: '#176861', functions: '#775515', punctuation: '#525252' };
+  await stage('picker light palette is independent of dark colors', { ...rendered(14, lightPalette), action: 'picker-palette', palette: 'light', paletteColors: lightPalette, screenshot: 'color-picker-light.png', maximize: true });
+  assert.deepEqual(config(14).get('lightColors'), lightPalette);
+  assert.deepEqual(config(14).get('darkColors'), DARK_PALETTE);
+  await stage('picker light palette bulk inheritance restores theme', { major: 14, restore: 'light-14', action: 'picker-bulk-inherit' });
+  await config(14).update('darkColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await config(14).update('lightColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   const plainUri = vscode.Uri.file(path.join(root, 'v14', 'colors.txt'));
   await fs.writeFile(plainUri.fsPath, fixture(99));
@@ -170,6 +216,12 @@ async function run() {
   }
   await stage('custom colors never affect unrelated languages', { major: 99, restore: 'plaintext' });
   await palette(14, {});
+  await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  await vscode.commands.executeCommand('workbench.action.joinAllGroups');
+  await require('./features').run(api);
+  await vscode.commands.executeCommand('workbench.view.explorer');
+  await vscode.commands.executeCommand('outline.focus');
+  await stage('project navigation and outline', { screenshot: 'project-navigation.png' });
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await stage('complete', { editorVersion: vscode.version,
     extensionVersion: vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting').packageJSON.version });

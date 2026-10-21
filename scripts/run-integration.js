@@ -23,6 +23,7 @@ async function main() {
       extensionDevelopmentPath: process.env.TYPOSCRIPT_EXTENSION_PATH || path.resolve(__dirname, '..'),
       extensionTestsPath: path.resolve(__dirname, '..', 'test', 'integration', renderedColors ? 'colors.js' : 'index.js'),
       vscodeExecutablePath: process.env.VSCODE_EXECUTABLE_PATH || undefined,
+      version: process.env.VSCODE_VERSION || undefined,
       launchArgs: [
         workspace,
         ...(renderedColors ? [`--remote-debugging-port=${port}`] : []),

@@ -54,6 +54,11 @@ async function runColorProbe(directory, port, reportFile) {
       if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
       return result.result.value;
     };
+    const viewport = process.env.TYPOSCRIPT_SCREENSHOT_DIR ? [1600, 1100]
+      : process.env.TYPOSCRIPT_TEST_VIEWPORT?.split('x').map(Number);
+    if (viewport?.length === 2 && viewport.every((value) => Number.isSafeInteger(value) && value >= 600 && value <= 4000)) {
+      await call('Emulation.setDeviceMetricsOverride', { width: viewport[0], height: viewport[1], deviceScaleFactor: 1, mobile: false });
+    }
     const snapshot = async (major) => evaluate(`(() => {
       for (const group of document.querySelectorAll('.monaco-editor .view-lines')) {
         if (!group.getBoundingClientRect().width || getComputedStyle(group).visibility !== 'visible') continue;
@@ -123,6 +128,9 @@ async function runColorProbe(directory, port, reportFile) {
       const before = report.characterChecks;
       if (current.action === 'picker') {
         const ui = await picker();
+        assert.equal(await ui(`document.getElementById('scope').value`), 'user', 'first use defaults to personal colors');
+        await ui(`(() => { const scope = document.getElementById('scope'); scope.value = ${JSON.stringify(current.folderId)}; scope.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await pause(150);
         assert.ok((await ui(`[...document.querySelectorAll('.row input[type=text]')].every(x => !x.value)`)), 'opening must retain System Default');
         await enter(ui, 'values', '#12GGGG');
         assert.equal(await ui(`document.getElementById('hex-values').getAttribute('aria-invalid')`), 'true');
@@ -173,6 +181,24 @@ async function runColorProbe(directory, port, reportFile) {
             return value === color && status !== 'Saving…';
           });
         }
+      } else if (current.action === 'picker-inherit') {
+        const ui = await picker();
+        await until('folder color source', async () => (await ui(`document.querySelector('[data-category="comments"] .source').textContent`)).includes('Folder'));
+        await ui(`document.querySelector('[data-category="comments"] .inherit').click()`);
+        await until('inherited color source', async () => (await ui(`document.querySelector('[data-category="comments"] .source').textContent`)).includes('Inherited · Workspace'));
+      } else if (current.action === 'picker-theme') {
+        await (await picker())(`document.querySelector('[data-category="comments"] .reset').click()`);
+      } else if (current.action === 'picker-undo') {
+        await (await picker())(`document.getElementById('undo').click()`);
+      } else if (current.action === 'picker-bulk-theme') {
+        await (await picker())(`document.getElementById('reset-all').click()`);
+      } else if (current.action === 'picker-bulk-inherit') {
+        await (await picker())(`document.getElementById('inherit-all').click()`);
+      } else if (current.action === 'picker-palette') {
+        const ui = await picker();
+        await ui(`(() => { const palette = document.getElementById('palette'); palette.value = ${JSON.stringify(current.palette)}; palette.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await pause(150);
+        for (const [category, color] of Object.entries(current.paletteColors)) await enter(ui, category, color);
       }
       if (current.baseline) {
         let previous;
@@ -216,6 +242,29 @@ async function runColorProbe(directory, port, reportFile) {
           assert.deepEqual(actual[range.line].characters.slice(range.start, range.start + range.length), baseline[range.line].characters.slice(range.start, range.start + range.length));
           report.characterChecks += range.length;
         }
+      }
+      if (current.screenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
+        await fs.mkdir(process.env.TYPOSCRIPT_SCREENSHOT_DIR, { recursive: true });
+        if (current.screenshot !== 'project-navigation.png') {
+          const ui = await picker();
+          await ui(`document.activeElement?.blur(); window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0;`);
+        } else {
+          const sash = await evaluate(`(() => {
+            const candidates = [...document.querySelectorAll('.part.sidebar .monaco-sash.horizontal')]
+              .map(node => node.getBoundingClientRect()).filter(r => r.width > 100 && r.height > 0 && r.y > 250 && r.y < 1000)
+              .sort((a, b) => a.y - b.y);
+            const r = candidates[0]; return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+          })()`);
+          if (sash) {
+            await call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...sash });
+            await call('Input.dispatchMouseEvent', { type: 'mousePressed', ...sash, button: 'left', clickCount: 1 });
+            await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: sash.x, y: 420, button: 'left', buttons: 1 });
+            await call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: sash.x, y: 420, button: 'left', clickCount: 1 });
+          }
+        }
+        await pause(250);
+        const capture = await call('Page.captureScreenshot', { format: 'png' });
+        await fs.writeFile(path.join(process.env.TYPOSCRIPT_SCREENSHOT_DIR, current.screenshot), Buffer.from(capture.data, 'base64'));
       }
       if (current.name !== 'complete') report.stages.push({ name: current.name, characterChecks: report.characterChecks - before });
       else { report.editorVersion = current.editorVersion; report.extensionVersion = current.extensionVersion; }

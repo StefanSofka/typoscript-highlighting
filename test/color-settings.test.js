@@ -10,15 +10,20 @@ function signal() {
     fire(value) { for (const callback of [...listeners]) callback(value); }, get size() { return listeners.size; } };
 }
 
-function setup(t, active = false) {
+function setup(t, active = false, storage) {
   const configuration = signal(), folders = signal(), editors = signal();
   const commands = new Map(), panels = [], writes = [], errors = [], values = new Map();
   let updateHook;
   const folder = { name: 'Site', uri: Uri.file('/site') };
   const config = (uri) => ({
     inspect(key) {
-      return { defaultValue: key === 'customColors' ? {} : '', globalValue: values.get(`1:${key}`),
+      return { defaultValue: key.endsWith('Colors') ? {} : '', globalValue: values.get(`1:${key}`),
         workspaceValue: values.get(`2:${key}`), workspaceFolderValue: values.get(`3:${uri?.toString()}:${key}`) };
+    },
+    get(key, fallback) {
+      const layers = this.inspect(key);
+      const values = [layers.defaultValue, layers.globalValue, layers.workspaceValue, layers.workspaceFolderValue].filter((value) => value !== undefined);
+      return key.endsWith('Colors') ? Object.assign({}, ...values) : values.at(-1) ?? fallback;
     },
     async update(key, value, target) {
       if (updateHook) await updateHook(key, value, target);
@@ -47,7 +52,7 @@ function setup(t, active = false) {
         return panel;
       } }
   };
-  const picker = createColorSettings(vscode, Uri.file('/extension'), (error) => errors.push(error));
+  const picker = createColorSettings(vscode, Uri.file('/extension'), (error) => errors.push(error), storage);
   t.after(() => picker.dispose());
   const open = (category) => { commands.get(COMMAND)(category); panels.at(-1).received.fire({ type: 'ready' }); return panels.at(-1); };
   const color = (panel, category, value, id = 1) => panel.received.fire({ type: 'color', category, color: value, id });
@@ -93,6 +98,8 @@ test('command opens a local spectrum view without saving settings and reuses the
 test('picker follows the active project and serializes writes across captured scopes', async (t) => {
   const { open, color, picker, writes, hook } = setup(t, true);
   const panel = open();
+  assert.equal(panel.messages.at(-1).targetId, 'user', 'personal colors initially belong in User settings');
+  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
   assert.equal(panel.messages.at(-1).targetId, 'folder:file:///site');
   let release;
   let calls = 0;
@@ -117,6 +124,7 @@ test('System Default saves an explicit empty value to mask inherited overrides',
   const { open, color, picker, values, writes } = setup(t, true);
   values.set('1:colors.comments', '#FF0000');
   const panel = open();
+  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
   assert.equal(panel.messages.at(-1).colors[0].color, '#FF0000');
   color(panel, 'comments', '');
   await picker.whenIdle();
@@ -140,6 +148,7 @@ test('invalid messages and unknown targets cannot write configuration', async (t
 test('external edits and removed folders refresh the view; closing releases listeners', (t) => {
   const { open, values, configuration, folders, vscode, commands, picker } = setup(t, true);
   const panel = open();
+  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
   values.set('3:file:///site:colors.comments', '#123456');
   configuration.fire({ affectsConfiguration: () => true });
   assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
@@ -171,4 +180,52 @@ test('save failures are reported and later writes still complete after a panel c
   assert.equal(writes.length, 1);
   assert.equal(writes[0].value, '#654321');
   assert.equal(panel.messages.length, count);
+});
+
+test('inherit, explicit theme and undo preserve exact local scope values', async (t) => {
+  const { open, color, picker, values } = setup(t, true);
+  values.set('1:colors.comments', '#112233');
+  const panel = open();
+  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
+  assert.equal(panel.messages.at(-1).colors[0].mode, 'inherit');
+  color(panel, 'comments', '');
+  await picker.whenIdle();
+  assert.equal(panel.messages.at(-1).colors[0].mode, 'theme');
+  panel.received.fire({ type: 'inherit', category: 'comments', id: 2 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:colors.comments'), undefined);
+  assert.equal(panel.messages.at(-1).colors[0].color, '#112233');
+  panel.received.fire({ type: 'undo', id: 3 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:colors.comments'), '');
+});
+
+test('theme palettes inherit base colors, preserve sibling colors and support bulk undo', async (t) => {
+  const { open, color, picker, values } = setup(t);
+  values.set('1:colors.comments', '#123456');
+  values.set('1:darkColors', { values: '#654321' });
+  const panel = open();
+  panel.received.fire({ type: 'palette', palette: 'dark' });
+  assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
+  assert.equal(panel.messages.at(-1).colors[0].source, 'Base palette · User');
+  color(panel, 'comments', '#abcdef');
+  await picker.whenIdle();
+  assert.deepEqual(values.get('1:darkColors'), { values: '#654321', comments: '#ABCDEF' });
+  panel.received.fire({ type: 'bulk', action: 'inherit', id: 2 });
+  await picker.whenIdle();
+  assert.equal(values.get('1:darkColors'), undefined);
+  panel.received.fire({ type: 'undo', id: 3 });
+  await picker.whenIdle();
+  assert.deepEqual(values.get('1:darkColors'), { values: '#654321', comments: '#ABCDEF' });
+});
+
+test('picker remembers scope and palette but starts with User on first use', (t) => {
+  const memory = new Map([['colorTarget', 'workspace'], ['colorPalette', 'light']]);
+  const storage = { get: (key, fallback) => memory.get(key) ?? fallback, update: async (key, value) => { memory.set(key, value); } };
+  const { open } = setup(t, true, storage);
+  const panel = open();
+  assert.equal(panel.messages.at(-1).targetId, 'workspace');
+  assert.equal(panel.messages.at(-1).palette, 'light');
+  panel.received.fire({ type: 'target', targetId: 'user' });
+  assert.equal(memory.get('colorTarget'), 'user');
 });

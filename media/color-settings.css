@@ -1,11 +1,11 @@
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 28px; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-main { max-width: 1040px; margin: 0 auto; }
+main { max-width: 1100px; margin: 0 auto; }
 h1 { font-size: 24px; font-weight: 600; margin: 0 0 10px; }
 h2 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
 p { line-height: 1.5; color: var(--vscode-descriptionForeground); margin: 0 0 18px; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 18px 0 22px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 0; }
 .toolbar label { font-weight: 600; }
 #status { margin-left: auto; font-size: 12px; color: var(--vscode-descriptionForeground); }
 select, input[type=text] { background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, transparent)); border-radius: 3px; font-family: inherit; padding: 7px 9px; min-height: 32px; }
@@ -15,9 +15,9 @@ button { font-family: inherit; color: var(--vscode-button-secondaryForeground, v
 button:hover { background: var(--vscode-button-secondaryHoverBackground); }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, select:focus-visible, #spectrum:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
-.layout { display: grid; grid-template-columns: minmax(550px, 1fr) 250px; grid-template-areas: "colors picker"; gap: 22px; align-items: start; }
+.layout { display: grid; grid-template-columns: minmax(550px, 1fr) 300px; grid-template-areas: "colors picker"; gap: 22px; align-items: start; }
 #categories { grid-area: colors; }
-.row { display: grid; grid-template-columns: minmax(130px, 1fr) 32px 148px auto; gap: 10px; align-items: center; padding: 14px 10px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-left: 2px solid transparent; }
+.row { display: grid; grid-template-columns: minmax(130px, 1fr) 32px 148px auto; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-left: 2px solid transparent; }
 .row.selected { border-left-color: var(--vscode-focusBorder); background: var(--vscode-list-hoverBackground); }
 .label { display: block; font-weight: 600; margin-bottom: 4px; }
 .description { color: var(--vscode-descriptionForeground); font-size: 11px; line-height: 1.4; }
@@ -39,3 +39,15 @@ input[aria-invalid=true] { border-color: var(--vscode-inputValidation-errorBorde
 #color-value { font-size: 13px; }
 @media (max-width: 900px) { body { padding: 20px; } .layout { grid-template-columns: 1fr; grid-template-areas: "picker" "colors"; } .picker { position: static; max-width: 430px; } }
 @media (max-width: 530px) { .row { grid-template-columns: 1fr 32px 148px; } .row .reset { grid-column: 3; } .error { grid-column: 1 / -1; } #status { margin-left: 0; width: 100%; } }
+.source { color: var(--vscode-descriptionForeground); font-size: 11px; margin-top: 5px; }
+.bulk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.bulk-actions button, .inherit { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+.row-actions { display: flex; flex-direction: column; gap: 4px; }
+.row-actions button { padding: 5px 7px; font-size: 12px; }
+.code-preview { margin-top: 18px; overflow: auto; padding: 12px; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); border-radius: 4px; }
+.code-preview pre { margin: 0; font: 12px/1.6 var(--vscode-editor-font-family, monospace); }
+.code-preview code { background: transparent; color: inherit; font: inherit; }
+.preview-help { font-size: 11px; margin: 10px 0 0; }
+#contrast { min-height: 30px; font-size: 11px; margin: 12px 0 0; }
+.low-contrast { color: var(--vscode-editorWarning-foreground, var(--vscode-errorForeground)); }
+@media (max-width: 530px) { .row-actions { grid-column: 3; } }

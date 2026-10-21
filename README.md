@@ -1,171 +1,186 @@
 # TypoScript Highlighting
 
-Syntax highlighting for **TYPO3 TypoScript and TSconfig** in Visual Studio Code and VSCodium. Distinguish object paths, values, constants, imports and comments at a glance, with comment rules that adapt to your TYPO3 project.
+TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Use your editor's theme or choose your own colors for nine syntax categories. The extension recognizes `.typoscript` and `.tsconfig` files automatically and includes basic editing support for TYPO3 11–14.
+Version **1.4.0** adds import links, outline and structural folding, constant definitions and references, contextual snippets, migration hints and optional indentation formatting. Automatic TYPO3 detection works independently for different projects in one workspace.
 
-[Install](#installation) · [Get started](#quick-start) · [Customize colors](#customize-colors) · [TYPO3 versions](#typo3-version-and-comment-rules) · [Troubleshooting](#troubleshooting)
+[Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
-[![TypoScript configuration in VSCodium beside the color picker: paths, values, constants, imports and comments use distinct colors.](images/screenshots/custom-colors-dark.png)](images/screenshots/custom-colors-dark.png)
+[![TypoScript beside the color picker in VSCodium.](images/screenshots/custom-colors-dark.png)](images/screenshots/custom-colors-dark.png)
 
-*TypoScript and the color picker side by side. This example uses a custom palette; a fresh installation follows your editor theme. Click any screenshot to view it at full size.*
-
-## What the extension does
-
-- **Highlights TYPO3 configuration:** object paths such as `page.10.value`, assignment and copy operators, values, `{$constants}`, `@import`, conditions, comments, nested blocks and value modifiers such as `addToList`.
-- **Adapts comment highlighting to your project:** detects TYPO3 from Composer files and selects legacy TYPO3 11 or modern TYPO3 12–14 rules. Different workspace folders and nested projects can use different rules.
-- **Lets you adjust syntax colors:** use the spectrum picker or hex values, save colors for yourself or a project, and see changes in open TypoScript editors.
-- **Supports everyday editing:** comment toggling, bracket matching, automatic bracket and quote closing, indentation rules, and folding markers such as `# region` / `# endregion`.
-
-This is a syntax-highlighting extension with editing helpers. It does not provide autocomplete, code formatting, error diagnostics or a language server, and does not validate or run your TYPO3 configuration.
+*Actual VSCodium screenshots. Custom foreground colors are optional; a fresh installation follows your editor theme.*
 
 ## Installation
 
-| Editor | Extension page |
-| --- | --- |
-| Visual Studio Code | [Install from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) |
-| VSCodium | [Install from Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting) |
-
-You can also open **Extensions**, search for **TYPO3 - TypoScript Highlighting**, and install the extension by **Stefan Sofka**. Its extension ID is `stefan-sofka.typoscript-highlighting`.
-
-Requires a VS Code-compatible editor with API version **1.70 or newer**. No separate Node.js, npm or PHP installation is needed to use the extension. Composer files are optional and are only used for automatic TYPO3 version detection.
-
-### Install a VSIX manually
-
-1. Download the `.vsix` asset from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest).
-2. Open the Command Palette with **Ctrl+Shift+P** on Windows/Linux or **Cmd+Shift+P** on macOS.
-3. Run **Extensions: Install from VSIX...** and select the downloaded file.
-
-For version 1.3.1, you can instead run either command from the directory containing the download:
+Download **typoscript-highlighting-1.4.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
 
 ```bash
-# Visual Studio Code
-code --install-extension typoscript-highlighting-1.3.1.vsix
-
 # VSCodium
-codium --install-extension typoscript-highlighting-1.3.1.vsix
+codium --install-extension typoscript-highlighting-1.4.0.vsix
+
+# Visual Studio Code
+code --install-extension typoscript-highlighting-1.4.0.vsix
 ```
+
+The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
+
+Requires a VS Code-compatible editor with API version **1.70 or newer**. No separate Node.js, PHP or Composer installation is needed. Composer metadata is optional and is read to identify your project and TYPO3 version.
 
 ## Quick start
 
-1. **Open your TYPO3 project** or a Sitepackage folder in the editor.
-2. **Open `setup.typoscript`, `constants.typoscript` or a `.tsconfig` file.** Highlighting starts automatically, using your current theme.
-3. **Check the language mode in the status bar.** It shows **TypoScript (v11)** or **TypoScript (v12+)** after version selection. The latter also covers TYPO3 13 and 14.
+1. Open your TYPO3 project or Sitepackage folder.
+2. Open a `.typoscript` or `.tsconfig` file. Highlighting starts automatically.
+3. Check the **TYPO3 version indicator** in the status bar. Its tooltip explains whether the version came from `composer.lock`, a `composer.json` range, an explicit setting, a manual language selection or an unknown-version fallback.
+4. Ctrl+click an `@import` path, open **Outline**, or invoke completion with **Ctrl+Space**.
 
-You can start editing immediately. To change colors, follow the picker instructions below. For legacy `.txt` files, see [file recognition](#a-file-has-no-typoscript-highlighting).
+## Navigate your project
+
+[![Object outline, import links and version information in VSCodium.](images/screenshots/project-navigation.png)](images/screenshots/project-navigation.png)
+
+### Imports
+
+Ctrl+click a quoted import path to open the file. On macOS, use Cmd+click. Supported project paths include:
+
+```typoscript
+@import './constants.typoscript'
+@import 'EXT:site_package/Configuration/TypoScript/setup.typoscript'
+@import 'EXT:site_package/Configuration/TypoScript/*.typoscript'
+```
+
+Wildcard and directory imports offer a file picker when several files match. Matches are sorted by filename. `EXT:` paths are resolved from extension Composer manifests, including `packages/`, installed vendor packages and conventional `typo3conf/ext/` locations. An extension's `extra.typo3/cms.extension-key` is preferred; extension package names provide a fallback.
+
+Modern imports follow TYPO3's file-level wildcard rules. Parent traversal and directory-level wildcards are not resolved. See the [TYPO3 import reference](https://docs.typo3.org/m/typo3/reference-typoscript/main/en-us/Syntax/FileImports/Index.html).
+
+### Outline and folding
+
+Outline shows object blocks, assignments, imports, conditions and multiline values. Folding understands these structures, block comments and `# region` / `# endregion` markers. Comment-looking text and braces inside literal values do not become structural blocks.
+
+### Constants and snippets
+
+For a reference such as `{$site.name}`:
+
+- **Go to Definition** opens matching project definitions.
+- **Find All References** searches project TypoScript and TSconfig files, plus imported sources.
+- **Hover** shows definitions, source files and values as written.
+- **Ctrl+Space** inside `{$…}` suggests matching constant paths.
+
+Definition lookup follows imports and discovers conventional `constants.typoscript`, `*.constants.typoscript` and `constants.txt` files under the detected project root. Results are source definitions, not evaluated runtime values: database templates, site-settings YAML, conditions and TYPO3's final override order are not evaluated.
+
+At the start of a statement, completion offers snippets for object blocks, multiline values, imports and conditions. TypoScript files also offer `text`, `coa` and `fluid`; `.tsconfig` files offer `tceform` and `tcedefaults`.
+
+### Diagnostics and migration
+
+The Problems view reports incomplete object blocks, multiline values, comments and condition brackets, imports that cannot be resolved in the project, and relevant legacy import syntax. Conditions may end implicitly at the end of a file, as TYPO3 allows.
+
+`<INCLUDE_TYPOSCRIPT: …>` is deprecated since TYPO3 13.4 and removed in TYPO3 14. For a simple compatible file import, **Quick Fix → Replace with @import** performs the migration. Imports with extra attributes or incompatible file types require manual migration.
+
+Project import resolution depends on the files available to the editor. You can disable diagnostics for a folder when its dependencies are supplied elsewhere.
+
+## TYPO3 target version
+
+Leave **Typo3 Version** on **Auto** for most projects. Detection searches upwards from each document for the nearest TYPO3 Composer project, including above the opened Sitepackage folder.
+
+- A usable installed version in `composer.lock` takes precedence.
+- Otherwise, supported requirements in `composer.json` select a syntax family.
+- Ambiguous or unknown versions use modern comment rules, explicitly shown as a **Fallback**.
+- TYPO3 11 uses legacy comments. TYPO3 12–14 share modern comment rules; the exact target version is also used for migration hints.
+
+Click the status indicator or run **TypoScript Highlighting: Select TYPO3 Version** to select Auto, an explicit version, the Composer source, or re-detection. A version selected there is saved for the active folder, or in User settings for a standalone file.
+
+```json
+{
+  "typoscriptHighlighting.typo3Version": "auto"
+}
+```
+
+In Auto mode, manually choosing **TypoScript (v11)** or **TypoScript (v12+)** in the language selector pins that document. Choose **TypoScript**, or select Auto through the version command, to resume detection. Automatic choices remain automatic after extension-host restarts. Explicit target settings take precedence over a manual language pin.
+
+The old `typoscriptHighlighting.commentRules` setting remains compatible when the new target-version setting has not been explicitly configured. Existing `v11`, `v12`, `v13` and `v14` values continue to work.
+
+### Shared language settings
+
+The three language IDs are required to support different comment grammars in a mixed-version workspace. Editor overrides written only under `[typoscript]` do not automatically apply to the version-specific modes.
+
+Run **TypoScript Highlighting: Configure Shared Language Settings** to copy an existing `[typoscript]` override at your chosen scope into the combined override. Existing shared options are preserved; copied generic options take precedence. Future edits can use this shared block:
+
+```json
+{
+  "[typoscript][typoscript-v11][typoscript-v12]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  }
+}
+```
+
+The command preserves the original override. More specific individual language overrides remain subject to the editor's normal precedence rules.
 
 ## Customize colors
 
-### Open the picker and choose a color
+Run **TypoScript Highlighting: Configure Colors**. The spectrum, hex fields and open TypoScript editors update together. The dialog starts with **User** settings and remembers your selected scope and palette.
 
-1. Open a TypoScript file, then open the Command Palette.
-2. Run **TypoScript Highlighting: Configure Colors**. The **TypoScript Colors** view opens beside the editor.
-3. Select **Save colors in**: **User**, **Workspace**, or **Folder: …**. The active file's workspace folder is selected initially when available; otherwise the picker starts with User settings.
-4. Click a category's color swatch. Use **Hue** to choose the color tone and the spectrum to adjust saturation and brightness, or enter a six-digit hex color such as `#C4A7E7` in that category's field.
+[![The dark-theme palette with scope controls, inheritance, undo and a code preview.](images/screenshots/color-picker-dark.png)](images/screenshots/color-picker-dark.png)
 
-[![Dark color picker with nine syntax categories, editable hex fields and the Constants spectrum set to #C4A7E7.](images/screenshots/color-picker-dark.png)](images/screenshots/color-picker-dark.png)
+### Scope and inheritance
 
-*Each row controls one syntax category. The selected swatch, spectrum and hex field stay in sync. Valid changes save automatically and apply to open TypoScript files.*
+Choose **User**, **Workspace**, or **Folder: …** as the save destination. Each row identifies the color's origin and indicates when a more specific setting or active theme palette overrides it for the active file.
 
-The picker also accepts hex values without `#`. Incomplete or invalid input displays an error and is not saved. Arrow keys adjust the spectrum; hold **Shift** for larger steps.
-
-### Choose where colors apply
-
-| Save colors in | Applies to |
+| Action | Result at the selected scope |
 | --- | --- |
-| **User** | Your TypoScript files across projects. |
-| **Workspace** | The current workspace, overriding User colors. |
-| **Folder: …** | That workspace folder, overriding Workspace and User colors. |
+| Enter `#RRGGBB` or use the spectrum | Save a custom color. |
+| **System Default**, or clear the field | Save an explicit empty value, forcing the editor theme over inherited extension colors. |
+| **Use inherited** | Remove the local override and use inherited colors again. |
 
-Opening the picker or switching its scope does not change settings. The view displays saved or inherited extension colors for the selected scope. More specific overrides can take precedence over the color you are editing.
+**Inherit all** and **Use editor theme for all** apply the corresponding action to all nine categories at that scope and palette. **Undo last change** restores the exact previous local values, including whether a setting was absent. Undo history belongs to the open dialog.
 
-### Restore your editor theme
+Valid hex entries save immediately. The picker also accepts six digits without `#`; incomplete or invalid input displays an error and is not saved. Spectrum arrow keys adjust saturation and brightness; hold **Shift** for larger steps.
 
-Click **System Default** beside a category, or clear its hex field. That category returns to the active editor theme and follows future theme changes. Reset the categories you changed to return to theme colors.
+### Base, dark and light palettes
 
-[![Light color picker with all nine categories restored to System Default and empty hex fields.](images/screenshots/color-picker-light.png)](images/screenshots/color-picker-light.png)
+The **Base** palette applies to all themes. Optional **Dark themes** and **Light themes** palettes override individual categories for the corresponding theme type. Missing categories inherit the base palette; **System Default** explicitly follows the editor theme. High-contrast themes use the matching dark or light palette.
 
-*System Default works with dark and light editor themes. Empty fields mean the extension leaves the category's color to your theme.*
+[![An independent light-theme palette in VSCodium.](images/screenshots/color-picker-light.png)](images/screenshots/color-picker-light.png)
 
-System Default writes an empty string at the selected scope, overriding an inherited extension color. To inherit a User or Workspace color again, remove the more specific setting from your editor's settings. Custom colors affect syntax foregrounds; your theme continues to control font styles and the rest of the editor's appearance.
+The preview helps compare custom category colors, and the contrast indicator compares the selected color with the current editor background. Open TypoScript editors show the exact theme syntax colors.
 
-### Settings reference
+## Settings reference
 
-Open **Settings** and search for `typoscriptHighlighting.colors` to edit hex values directly. **Open color picker** in each setting's description opens the spectrum view for that category.
+Search Settings for `typoscriptHighlighting`. All extension options can be configured per resource.
 
-All color keys start with `typoscriptHighlighting.colors.`:
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `typoscriptHighlighting.typo3Version` | `"auto"` | Auto, v11, v12, v13 or v14 target version. |
+| `typoscriptHighlighting.colors.*` | `""` | Base foreground colors for nine syntax categories. |
+| `typoscriptHighlighting.darkColors` | `{}` | Optional category overrides for dark themes. |
+| `typoscriptHighlighting.lightColors` | `{}` | Optional category overrides for light themes. |
+| `typoscriptHighlighting.diagnostics.enabled` | `true` | Structural errors, project import warnings and migration hints. |
+| `typoscriptHighlighting.formatting.enabled` | `false` | Opt in to conservative indentation formatting. |
 
-| Key suffix | Controls |
-| --- | --- |
-| `comments` | Line, block and documentation comments |
-| `objectPaths` | Object paths and copy/reference targets, such as `page.10.value` |
-| `values` | Assignment values and quoted strings, such as `TEXT` or `Hello TYPO3!` |
-| `operators` | Assignment `=`, copy `<`, reference `=<`, modification `:=`, deletion `>` |
-| `constants` | Constant references, such as `{$site.title}` |
-| `conditions` | Conditions and control keywords, such as `[END]` |
-| `imports` | Import keywords, file paths and legacy import attributes |
-| `functions` | Value modifier names, such as `addToList` |
-| `punctuation` | Block braces, value/argument parentheses and legacy import closing brackets |
-
-For example, add this to User settings or your project's `.vscode/settings.json`:
+The nine category keys are `comments`, `objectPaths`, `values`, `operators`, `constants`, `conditions`, `imports`, `functions` and `punctuation`.
 
 ```json
 {
   "typoscriptHighlighting.colors.comments": "#7FB069",
-  "typoscriptHighlighting.colors.objectPaths": "#82AAFF",
-  "typoscriptHighlighting.colors.constants": "#C4A7E7"
+  "typoscriptHighlighting.colors.constants": "#C4A7E7",
+  "typoscriptHighlighting.lightColors": {
+    "comments": "#467240",
+    "constants": "#6F3BA0"
+  }
 }
 ```
 
-Other categories keep their inherited extension colors or theme defaults. Colors apply to both TypoScript and TSconfig, in all three TypoScript language modes. Existing hex overrides and legacy `custom` selections remain supported; new picker edits save hex values directly.
+Native theme settings are not rewritten. Existing legacy `custom` selections and their `customColors` object remain supported; new picker edits use direct hex values.
 
-## TYPO3 version and comment rules
+### Optional formatting
 
-Leave **Comment Rules** on **Auto (Composer detection)** for most projects. Detection searches upwards from each document for the nearest TYPO3 Composer project, including when you open only a Sitepackage subdirectory. It uses a usable installed version from `composer.lock` first, then requirements from `composer.json`, recognizing `typo3/cms-core` and `typo3/cms`.
+Enable `typoscriptHighlighting.formatting.enabled`, then use **Format Document**. Formatting adjusts leading indentation on recognized code lines using the editor's tab size and insert-spaces options. It preserves assignment values, multiline value content and line endings. Documents with structural errors are left for you to repair first.
 
-| Comment Rules setting | Language mode | Comment behavior |
-| --- | --- | --- |
-| `auto` — default | Selected for each document | TYPO3 11 uses legacy rules; TYPO3 12–14 use modern rules. |
-| `v11` | **TypoScript (v11)** | Block comment delimiters must begin their own trimmed lines. Editor comment toggling uses `#`. |
-| `v12`, `v13`, `v14` | **TypoScript (v12+)** | Shared modern rules, including inline block comments where the syntax permits them. |
-
-The Settings dropdown has separate **TYPO3 12**, **13** and **14** entries even though they share one grammar. If no version can be determined, the extension uses **v12+** rules. Ambiguous version constraints also use this fallback; set the version explicitly for a TYPO3 11 project that cannot be detected.
-
-Search Settings for `typoscriptHighlighting.commentRules`, or add a project override:
-
-```json
-{
-  "typoscriptHighlighting.commentRules": "v11"
-}
-```
-
-In Auto mode, select **TypoScript (v11)** or **TypoScript (v12+)** in the status bar to pin the open document to that mode. Choose **TypoScript** to resume detection. An explicit Comment Rules setting takes precedence over manual language selection. Changes to Composer files or the setting refresh the rules automatically.
-
-### Why a comment marker may stay part of a value
-
-In a normal assignment, everything after `=` is a value. The second `#` below is literal text and receives value highlighting:
-
-```typoscript
-# This is a comment.
-page.10.value = Hello # this is part of the value
-```
-
-A multiline value starts with `(` directly after the object path, without `=`. Comment-looking text inside stays value text; constant references still receive their own highlighting:
-
-```typoscript
-page.10.value (
-  Hello {$site.title}
-  # This line is part of the value too.
-)
-```
-
-`page.10.value = (` assigns a single-line value and does not open a multiline block. These distinctions follow TYPO3's [assignment and multiline syntax](https://docs.typo3.org/m/typo3/reference-typoscript/13.4/en-us/Syntax/Operators/Index.html) and [comment rules](https://docs.typo3.org/m/typo3/reference-typoscript/13.4/en-us/Syntax/Comments/Index.html).
+This is indentation formatting, not a complete TypoScript rewrite or a runtime validator.
 
 ## Troubleshooting
 
-### A file has no TypoScript highlighting
+### A legacy file has no highlighting
 
-Automatic recognition covers `.typoscript` and `.tsconfig`. For a legacy `setup.txt`, click the language name in the status bar and choose **TypoScript**. To recognize common legacy filenames automatically, add this to workspace settings:
+Automatic recognition covers `.typoscript` and `.tsconfig`. Select **TypoScript** manually for a legacy file or add workspace associations:
 
 ```json
 {
@@ -176,23 +191,33 @@ Automatic recognition covers `.typoscript` and `.tsconfig`. For a legacy `setup.
 }
 ```
 
-### TYPO3 13 or 14 shows “TypoScript (v12+)”
+### Comment markers stay part of a value
 
-That is expected: TYPO3 12, 13 and 14 share the modern comment grammar. The label identifies the grammar rather than the exact installed TYPO3 release.
+Everything after `=` is a literal assignment value. A multiline value starts with `(` directly after the object path, without `=`:
 
-### A color change or reset seems to have no effect
+```typoscript
+page.10.value = Hello # this is literal text
+page.20.value (
+  Hello {$site.name}
+  # This is literal text too.
+)
+```
 
-Check **Save colors in** and any more specific Workspace or Folder overrides. Reset at the scope that supplies the effective color. Also check that the file is in a TypoScript language mode; extension colors do not apply to unrelated languages.
+`page.10.value = (` is a single-line assignment. These distinctions follow TYPO3's [operator syntax](https://docs.typo3.org/m/typo3/reference-typoscript/main/en-us/Syntax/Operators/Index.html).
 
-### Highlighting still looks wrong
+### A color edit seems to have no effect
 
-Check **Comment Rules** and the assignment examples above. For extension update errors, open **View → Output** and select **TypoScript Highlighting**. When [reporting an issue](https://github.com/StefanSofka/typoscript-highlighting/issues/new), include a small code sample, TYPO3 and editor versions, language mode, Comment Rules setting, theme, and a screenshot showing the problem. Describe the result you expected.
+Check the selected save scope, Base/Dark/Light palette and the row's origin/override indication. Use **Use inherited** to remove a local override; use **System Default** to explicitly select theme colors.
+
+### An import cannot be resolved
+
+Check that the extension is available in the opened project and that its Composer extension key matches the `EXT:` path. Modern imports use `./` or `EXT:`, a quoted path and wildcards only in the filename. The extension does not run TYPO3 to discover database or backend-managed configuration.
+
+For update errors, open **View → Output → TypoScript Highlighting**. When [reporting an issue](https://github.com/StefanSofka/typoscript-highlighting/issues/new), include a small example, TYPO3/editor versions, version-indicator source, relevant settings and a screenshot.
 
 ## Development and contributions
 
-See the [development guide](docs/development.md) for setup, tests, grammar generation, debugging and VSIX packaging. Architecture and previous verification results are recorded in the [project review](docs/project-review.md) and [development log](docs/development-log.md).
-
-Pull requests with focused changes and a small reproducible example are welcome.
+See the [development guide](docs/development.md), [project review](docs/project-review.md) and [development log](docs/development-log.md). Tests cover real TextMate tokenization, incremental updates, project structure, settings inheritance, editor providers and visible foreground colors in isolated editor profiles.
 
 ## License
 
