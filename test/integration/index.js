@@ -151,6 +151,7 @@ async function run() {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await require('./features').run(controller);
   await require('./installation').run(controller);
+  await require('./site-sets').run(controller);
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await fs.writeFile(path.join(root, 'integration-result.json'), JSON.stringify({ passed: true, editorVersion: vscode.version }));
 }

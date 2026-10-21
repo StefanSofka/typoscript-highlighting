@@ -55,8 +55,10 @@ async function run(api, capture) {
   const customUri = vscode.Uri.file(path.join(extension, 'setup.typoscript'));
   const text = '@import "EXT:library/setup.typoscript"\npage.10 = FLU\npage.20 = TEXT\npage.20.va\npage.20.value = {$site.title}\npage.30 = PA\n';
   await write(customUri.fsPath, text);
+  await write(path.join(custom, 'config/sites/main/config.yaml'), 'dependencies: [vendor/main]\n');
+  await write(path.join(extension, 'Configuration/Sets/Main/config.yaml'), 'name: vendor/main\nlabel: Main site\n');
   await write(path.join(custom, 'config/sites/main/settings.yaml'), 'site.title: Website from YAML\n');
-  await write(path.join(extension, 'Configuration/Sets/Main/settings.definitions.yaml'), 'settings:\n  site.title:\n    default: Default title\n    label: Website title\n');
+  await write(path.join(extension, 'Configuration/Sets/Main/settings.definitions.yaml'), 'settings:\n  site.title:\n    type: string\n    default: Default title\n    label: Website title\n');
   await vscode.workspace.openTextDocument(customUri); await api.refresh(); await api.whenIdle();
   const current = () => vscode.workspace.textDocuments.find((entry) => entry.uri.toString() === customUri.toString());
   const info = api.getInfo(current());

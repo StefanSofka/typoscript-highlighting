@@ -1,5 +1,17 @@
 # TypoScript Extension Project Review
 
+## Version 1.6.0: site sets and typed settings
+
+`lib/site-sets.js` builds a registry from available extension directories and detected Composer/Classic site roots. It resolves dependencies by declared set name, rejects duplicate/invalid required graphs, tolerates absent optional dependencies and orders the full registry before selecting a site's dependency closure. Its ordering follows TYPO3's dependency service, including deterministic optional-cycle handling. Selected sets and local site files contribute implicit TypoScript/TSconfig sources without mixing the two language contexts.
+
+`lib/site-settings.js` parses typed defaults, scalar/list values, enum metadata, readonly flags and source locations. Bounded local aliases and static YAML imports are supported; definition files and set configurations reject imports. Each provider applies defaults and then its own values in set load order, with site values last. A separate `settings.yaml` replaces inline settings. Invalid typed values receive warnings and fall back to a preceding valid candidate; enum warnings remain advisory. The hover describes static source selection, without executing TYPO3 or resolving environment placeholders and database overrides.
+
+`lib/site-set-features.js` supplies YAML dependency/setting definition, reference, link, hover and completion providers. Replacement ranges include existing name/value suffixes; name completion preserves neighboring syntax and values, and value completion preserves trailing comments. `lib/site-context.js` exposes automatic or persisted per-project site context and a load-order inspector. Physical site containment takes precedence over a saved selection; shared sets otherwise retain their own defaults and dependencies.
+
+The existing project watcher invalidates YAML changes and discarded edits. Additional bounded watchers cover discovered extension/site roots and imported resources outside the workspace, including symlinked Classic extensions. Registry discovery batches at most 16 reads, visits at most 300 extension roots and 500 set/site directories, limits import depth to 32 and imported settings loads to 500, and retains at most 20,000 source definitions. Each YAML file is limited to 512 KiB and alias traversal is bounded. Cancellation and diagnostic generations prevent stale requests from replacing current results.
+
+The architecture was checked against the [TYPO3 site-set documentation](https://docs.typo3.org/m/typo3/reference-coreapi/13.4/en-us/ApiOverview/SiteHandling/SiteSets.html), [setting definitions](https://docs.typo3.org/m/typo3/reference-coreapi/13.4/en-us/ApiOverview/SiteHandling/SiteSettingDefinitions.html), and the core's [SetRegistry](https://github.com/TYPO3/typo3/blob/13.4/typo3/sysext/core/Classes/Site/Set/SetRegistry.php), [DependencyOrderingService](https://github.com/TYPO3/typo3/blob/13.4/typo3/sysext/core/Classes/Service/DependencyOrderingService.php) and [SiteSettingsFactory](https://github.com/TYPO3/typo3/blob/13.4/typo3/sysext/core/Classes/Site/SiteSettingsFactory.php). The earlier release sections below describe their original scope.
+
 ## Version 1.5.0: automatic installation context
 
 `lib/version.js` discovers Composer and Classic cores, keeps project/webroot/vendor/core paths together, and prefers the installed core over installed package metadata, lockfiles and manifest ranges. Core PHP is lexed for a literal class constant without execution. Classic symlinks and copied cores work; inactive archives are ignored. Sitepackage compatibility manifests yield to enclosing installations. Root markers stop incomplete nested sites from borrowing parent versions.
@@ -42,6 +54,11 @@ The initial inspection used commit `6572d0d`, version 1.0.3, on October 2, 2026.
 | `extension.js` | Editor entry point and diagnostic output channel |
 | `lib/controller.js` | Document updates, manual selections, settings, watchers and lifecycle handling |
 | `lib/version.js` | Composer parsing, conservative version constraints, asynchronous reads and directory cache |
+| `lib/project.js` | Installation-scoped imports, extension discovery and TypoScript/TSconfig source searches |
+| `lib/site-sets.js` | Site-set registry, dependency load order, static settings composition and site context |
+| `lib/site-settings.js` | YAML syntax, typed setting definitions, imports and value validation |
+| `lib/site-set-features.js` | YAML dependency/setting navigation, hover, links and completion |
+| `lib/site-context.js` | Site-context status, persisted selection and load-order inspector |
 | `lib/colors.js` | Optional per-resource foreground colors, editor decorations, caching and lifecycle handling |
 | `lib/color-settings.js` | Spectrum command, scoped settings, serialized writes and webview lifecycle |
 | `media/` | Local spectrum picker controls, hex validation and editor-themed styles |
