@@ -2,7 +2,7 @@
 
 TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Version **1.6.0** adds site-set dependencies, typed YAML settings and implicitly loaded TypoScript with a site context for each project. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks. No version setting is needed for a complete project.
+Version **1.6.1** includes site-set dependencies, typed YAML settings and implicitly loaded TypoScript with a site context for each project, plus a corrected PNG icon for Marketplace uploads. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks. No version setting is needed for a complete project.
 
 [Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
@@ -12,14 +12,14 @@ Version **1.6.0** adds site-set dependencies, typed YAML settings and implicitly
 
 ## Installation
 
-Download **typoscript-highlighting-1.6.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
+Download **typoscript-highlighting-1.6.1.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
 
 ```bash
 # VSCodium
-codium --install-extension typoscript-highlighting-1.6.0.vsix
+codium --install-extension typoscript-highlighting-1.6.1.vsix
 
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.6.0.vsix
+code --install-extension typoscript-highlighting-1.6.1.vsix
 ```
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.

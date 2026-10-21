@@ -297,3 +297,11 @@ Starting revision: `5521df0` on `dev`, extension version 1.5.0. Version 1.6.0 ad
 Verification: authored JavaScript/grammar checks and all 238 regression/package-content tests pass. Native integration passes on VSCodium 1.140.0 and the declared minimum VS Code 1.70.0, covering YAML completion edits, local site sources, multi-site isolation, imported settings, dependency/type diagnostics and Classic symlinked sets. The VSCodium visual suite passes 55 scenarios, 305 token ranges and 6,204 character foreground comparisons. The packaged runtime is checked in both isolated editors. GitHub Actions passes all six jobs on both branches: Node.js 22/24/26 regression and packaging, minimum/stable editor integration and rendered colors. The manifest and lockfile are synchronized to 1.6.0.
 
 Release preparation updates the README download and installation commands to 1.6.0. The release attaches `typoscript-highlighting-1.6.0.vsix` and its SHA-256 checksum, with tag `v1.6.0` on the final master commit. Runtime files in the final archive are compared byte-for-byte with the verified package after the documentation update. GitHub releases and extension-registry publishing remain separate operations.
+
+## Version 1.6.1: Marketplace icon format, October 21, 2026
+
+Starting revision: `429fdc1`, version 1.6.0. Marketplace upload rejected the VSIX because `images/icon.png` contained WebP data despite its PNG filename. The package-content test checked the path but did not validate the actual image format.
+
+Re-encode the existing icon as a real RGB PNG, retaining all 1024 × 1024 decoded pixels exactly. Add a regression test for the PNG signature, IHDR header and minimum 128 × 128 dimensions; the new assertion reproduces the original failure before the asset is corrected. Update the manifest, lockfile and installation instructions to 1.6.1. Extension runtime code and screenshots are unchanged.
+
+Release validation includes authored JavaScript/grammar checks, 239 regression/package-content tests, decoding the icon extracted from the final VSIX and comparing its pixels with the original image. The release includes the rebuilt VSIX and a matching SHA-256 checksum.

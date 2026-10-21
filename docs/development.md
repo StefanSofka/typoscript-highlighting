@@ -86,16 +86,18 @@ npm run package
 npx --no-install vsce ls --tree
 ```
 
-The current source builds **typoscript-highlighting-1.6.0.vsix**, including site-set editing. Install the resulting file with **Extensions: Install from VSIX…**, or run one of:
+The current source builds **typoscript-highlighting-1.6.1.vsix**, including site-set editing and the corrected PNG icon. Install the resulting file with **Extensions: Install from VSIX…**, or run one of:
 
 ```bash
-codium --install-extension typoscript-highlighting-1.6.0.vsix
-code --install-extension typoscript-highlighting-1.6.0.vsix
+codium --install-extension typoscript-highlighting-1.6.1.vsix
+code --install-extension typoscript-highlighting-1.6.1.vsix
 ```
 
 GitHub release downloads and extension registries are published separately; their available version can differ from the source version.
 
 The package includes runtime modules, picker assets, language configurations, grammars, images and documentation. The runtime token engines include Oniguruma's WASM binary and license notices. The Node distribution and ISC license of the static YAML parser are included too. `.vscodeignore` allowlists the required files; development tools and tests are excluded. Building a VSIX does not publish it to an extension registry.
+
+The manifest test checks the icon's PNG signature, image header and minimum dimensions; a `.png` filename alone does not establish the image format. When replacing an icon, also decode the image from the final VSIX to verify the packaged asset.
 
 GitHub Actions runs regression checks and packaging on Node.js 22, 24 and 26, integration on VS Code 1.70.0 and stable, and rendered-color checks on stable. The color job uploads its JSON report and any failure screenshot.
 
