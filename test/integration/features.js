@@ -34,6 +34,14 @@ async function run(api) {
   await api.refresh(); await api.whenIdle();
   document = vscode.workspace.textDocuments.find((item) => item.uri.toString() === uri.toString());
   assert.equal(document.languageId, 'typoscript-v12');
+  const editorConfig = vscode.workspace.getConfiguration(undefined, uri);
+  await editorConfig.update('[typoscript]', { 'editor.tabSize': 7 }, vscode.ConfigurationTarget.WorkspaceFolder);
+  const genericOptions = editorConfig.inspect('[typoscript]').workspaceFolderValue;
+  await editorConfig.update('[typoscript][typoscript-v11][typoscript-v12]', genericOptions, vscode.ConfigurationTarget.WorkspaceFolder);
+  assert.equal(vscode.workspace.getConfiguration('editor', { uri, languageId: document.languageId }).get('tabSize'), 7);
+  await editorConfig.update('[typoscript]', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await editorConfig.update('[typoscript][typoscript-v11][typoscript-v12]', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  console.log('PASS: shared language overrides preserve generic editor settings in the selected grammar');
 
   const symbols = await vscode.commands.executeCommand('vscode.executeDocumentSymbolProvider', uri);
   const lib = symbols.find((item) => item.name === 'lib');

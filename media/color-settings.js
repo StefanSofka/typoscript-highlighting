@@ -158,7 +158,7 @@
       swatch.setAttribute('aria-label', `Choose ${entry.label.toLowerCase()} color`);
       swatch.addEventListener('click', () => {
         select(entry.category);
-        document.querySelector('.picker').scrollIntoView({ block: 'nearest' });
+        spectrum.scrollIntoView({ block: 'center' });
         spectrum.focus({ preventScroll: true });
       });
       const input = document.createElement('input');

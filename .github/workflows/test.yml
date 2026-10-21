@@ -47,6 +47,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: xvfb-run -a npm run test:colors
+        env:
+          TYPOSCRIPT_TEST_VIEWPORT: 1024x800
       - uses: actions/upload-artifact@v4
         if: always()
         with:

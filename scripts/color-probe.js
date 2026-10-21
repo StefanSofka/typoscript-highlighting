@@ -54,7 +54,11 @@ async function runColorProbe(directory, port, reportFile) {
       if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
       return result.result.value;
     };
-    if (process.env.TYPOSCRIPT_SCREENSHOT_DIR) await call('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1100, deviceScaleFactor: 1, mobile: false });
+    const viewport = process.env.TYPOSCRIPT_SCREENSHOT_DIR ? [1600, 1100]
+      : process.env.TYPOSCRIPT_TEST_VIEWPORT?.split('x').map(Number);
+    if (viewport?.length === 2 && viewport.every((value) => Number.isSafeInteger(value) && value >= 600 && value <= 4000)) {
+      await call('Emulation.setDeviceMetricsOverride', { width: viewport[0], height: viewport[1], deviceScaleFactor: 1, mobile: false });
+    }
     const snapshot = async (major) => evaluate(`(() => {
       for (const group of document.querySelectorAll('.monaco-editor .view-lines')) {
         if (!group.getBoundingClientRect().width || getComputedStyle(group).visibility !== 'visible') continue;

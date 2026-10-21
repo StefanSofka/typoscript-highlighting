@@ -58,6 +58,7 @@ Reports default to `.vscode-test/color-results.json`. Failed runs attempt to sav
 | `TYPOSCRIPT_COLOR_REPORT` | Choose the rendered-color JSON report path. |
 | `TYPOSCRIPT_EXTENSION_PATH` | Load an extracted VSIX's extension directory to test packaged runtime files. |
 | `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real dark/light picker, editor and outline screenshots during the color suite. |
+| `TYPOSCRIPT_TEST_VIEWPORT` | Set a compact color-test viewport such as `1024x800`; screenshot mode uses its fixed larger viewport. |
 
 To verify the declared minimum and regenerate documentation screenshots:
 
