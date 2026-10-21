@@ -39,7 +39,12 @@ async function main() {
       const reportFile = process.env.TYPOSCRIPT_COLOR_REPORT || path.resolve(__dirname, '..', '.vscode-test', 'color-results.json');
       const results = await Promise.allSettled([editor, runColorProbe(temporary, port, reportFile)]);
       for (const result of results) if (result.status === 'rejected') throw result.reason;
-    } else await editor;
+    } else {
+      await editor;
+      const result = JSON.parse(await fs.readFile(path.join(temporary, 'integration-result.json'), 'utf8'));
+      if (!result.passed) throw new Error('The extension host did not complete the integration suite. Use the editor binary rather than a CLI wrapper.');
+      console.log(`Verified extension-host completion in editor ${result.editorVersion}.`);
+    }
   } finally {
     await fs.rm(temporary, { recursive: true, force: true });
   }

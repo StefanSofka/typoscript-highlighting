@@ -19,8 +19,8 @@ test('all manifest resources exist and grammar scopes match their files', () => 
   }
 });
 
-test('only the custom-color token engines are runtime dependencies', () => {
-  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['vscode-oniguruma', 'vscode-textmate']);
+test('runtime dependencies contain the token engines and static YAML parser', () => {
+  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['vscode-oniguruma', 'vscode-textmate', 'yaml']);
   assert.ok(manifest.devDependencies['@vscode/vsce']);
   assert.equal(lock.version, manifest.version);
   assert.equal(lock.packages[''].version, manifest.version);

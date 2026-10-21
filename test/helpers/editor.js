@@ -61,7 +61,9 @@ function createEditor() {
     },
     notifyFile(filename, kind = 'change') {
       for (const watcher of watchers) {
-        if (!watcher.disposed && watcher.pattern.baseUri.path === path.dirname(filename)) watcher.events[kind].fire(Uri.file(filename));
+        const base = watcher.pattern.baseUri?.path;
+        if (!watcher.disposed && base && (base === path.dirname(filename)
+          || path.join(base, watcher.pattern.pattern) === filename)) watcher.events[kind].fire(Uri.file(filename));
       }
     }
   };
@@ -71,6 +73,20 @@ function createEditor() {
     workspace: {
       get textDocuments() { return editor.documents; },
       fs: {
+        async stat(uri) {
+          if (files.has(uri.toString())) return { type: 1 };
+          if ([...files.keys()].some((key) => key.startsWith(uri.toString().replace(/\/$/, '') + '/'))) return { type: 2 };
+          throw Object.assign(new Error('File not found'), { code: 'FileNotFound' });
+        },
+        async readDirectory(uri) {
+          const prefix = uri.toString().replace(/\/$/, '') + '/';
+          const entries = new Map();
+          for (const key of files.keys()) if (key.startsWith(prefix)) {
+            const relative = key.slice(prefix.length);
+            entries.set(relative.split('/')[0], relative.includes('/') ? 2 : 1);
+          }
+          return [...entries];
+        },
         async readFile(uri) {
           reads.push(uri.toString());
           if (editor.readHook) await editor.readHook(uri);

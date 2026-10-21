@@ -2,7 +2,7 @@
 	"name": "typoscript-highlighting",
 	"displayName": "TYPO3 - TypoScript Highlighting",
 	"description": "TypoScript and TSconfig highlighting, import navigation, constants, outline, snippets and TYPO3-aware editing for VS Code and VSCodium.",
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"publisher": "stefan-sofka",
 	"license": "MIT",
 	"author": {
@@ -82,22 +82,25 @@
 						"v13",
 						"v14"
 					],
-					"markdownDescription": "Target TYPO3 version for syntax and migration hints. **Auto** reads Composer metadata. The status bar shows the source or an explicit fallback. TYPO3 12–14 share modern comment rules.",
+					"markdownDescription": "Optional target-version override for standalone extensions or incomplete projects. Leave **Auto** to detect Composer and Classic installations from the active core, installed package metadata or Composer files. The status bar explains the source and any version mismatch.",
 					"enumItemLabels": [
-						"Auto (Composer detection)",
+						"Auto (Composer and Classic detection)",
 						"TYPO3 11",
 						"TYPO3 12",
 						"TYPO3 13",
 						"TYPO3 14"
 					],
 					"enumDescriptions": [
-						"Detect the TYPO3 version from composer.lock or composer.json.",
+						"Detect the project automatically; no version setting is needed for complete installations.",
 						"Use legacy line-based comment rules.",
 						"Use modern comment rules (TYPO3 12 and later).",
 						"Use modern comment rules for TYPO3 13.",
 						"Use modern comment rules for TYPO3 14."
 					],
-					"order": 0
+					"order": 90,
+					"tags": [
+						"advanced"
+					]
 				},
 				"typoscriptHighlighting.commentRules": {
 					"type": "string",
@@ -110,23 +113,26 @@
 						"v13",
 						"v14"
 					],
-					"markdownDescription": "Select the TYPO3 comment rules. **Auto** detects the version from Composer files. TYPO3 12, 13 and 14 share the modern grammar and the **TypoScript (v12+)** language mode.",
+					"markdownDescription": "Optional target-version override for standalone extensions or incomplete projects. Leave **Auto** to detect Composer and Classic installations from the active core, installed package metadata or Composer files. The status bar explains the source and any version mismatch.",
 					"enumItemLabels": [
-						"Auto (Composer detection)",
+						"Auto (Composer and Classic detection)",
 						"TYPO3 11",
 						"TYPO3 12",
 						"TYPO3 13",
 						"TYPO3 14"
 					],
 					"enumDescriptions": [
-						"Detect the TYPO3 version from composer.lock or composer.json.",
+						"Detect the project automatically; no version setting is needed for complete installations.",
 						"Use legacy line-based comment rules.",
 						"Use modern comment rules (TYPO3 12 and later).",
 						"Use modern comment rules for TYPO3 13.",
 						"Use modern comment rules for TYPO3 14."
 					],
-					"order": 50,
-					"deprecationMessage": "Use Typo3 Version instead. Existing Comment Rules settings are still honored when the new setting is not explicitly configured."
+					"order": 95,
+					"deprecationMessage": "Use Typo3 Version instead. Existing Comment Rules settings are still honored when the new setting is not explicitly configured.",
+					"tags": [
+						"advanced"
+					]
 				},
 				"typoscriptHighlighting.colors.comments": {
 					"type": "string",
@@ -396,7 +402,7 @@
 					"scope": "resource",
 					"default": false,
 					"order": 41,
-					"markdownDescription": "Enable conservative indentation formatting for structurally complete documents. Literal values and multiline value content are preserved. Uses the editor’s tab size and insert-spaces settings."
+					"markdownDescription": "Enable conservative indentation formatting for structurally complete documents. Literal values and multiline value content are preserved. Uses the editor\u2019s tab size and insert-spaces settings."
 				}
 			}
 		},
@@ -408,7 +414,7 @@
 			},
 			{
 				"command": "typoscriptHighlighting.showVersion",
-				"title": "Select TYPO3 Version",
+				"title": "Inspect TYPO3 Detection",
 				"category": "TypoScript Highlighting"
 			},
 			{
@@ -437,12 +443,13 @@
 		"test:colors": "node scripts/run-integration.js --colors"
 	},
 	"devDependencies": {
-		"@vscode/vsce": "4.0.0",
-		"@vscode/test-electron": "3.1.0"
+		"@vscode/test-electron": "3.1.0",
+		"@vscode/vsce": "4.0.0"
 	},
 	"dependencies": {
+		"vscode-oniguruma": "2.0.1",
 		"vscode-textmate": "9.3.2",
-		"vscode-oniguruma": "2.0.1"
+		"yaml": "2.9.1"
 	},
 	"__metadata": {
 		"id": "5a650ac1-fd53-4c35-8249-a03a5925512a",

@@ -20,6 +20,7 @@ async function activate(context) {
   await colors.refresh();
   void features.refresh().catch(report);
   return {
+    getInfo(document) { return controller.getInfo(document); },
     async refresh() { await controller.refresh(); await colors.refresh(); await features.refresh(); },
     async whenIdle() { await colorSettings.whenIdle(); await controller.whenIdle(); await colors.whenIdle(); await features.whenIdle(); }
   };

@@ -11,16 +11,14 @@ function setup(t) {
   editor.vscode.workspace.getWorkspaceFolder = () => ({ uri: root });
   editor.vscode.workspace.findFiles = async (pattern) => [...editor.files.keys()]
     .filter((key) => key.startsWith(pattern.baseUri.toString().replace(/\/$/, '') + '/'))
-    .filter((key) => pattern.pattern.includes('composer.json') ? key.endsWith('/composer.json') : /(?:\/constants|\.constants)\.typoscript$/.test(key))
+    .filter((key) => pattern.pattern.includes('composer.json') ? key.endsWith('/composer.json') : pattern.pattern.includes('.yaml') ? key.endsWith('.yaml') : /(?:\/constants|\.constants)\.typoscript$/.test(key))
     .map((key) => Uri.file(key.slice('file://'.length)));
   editor.vscode.workspace.fs.stat = async (uri) => {
     if (editor.files.has(uri.toString())) return { type: 1 };
     if ([...editor.files.keys()].some((key) => key.startsWith(uri.toString().replace(/\/$/, '') + '/'))) return { type: 2 };
     throw Object.assign(new Error('Missing'), { code: 'FileNotFound' });
   };
-  editor.vscode.workspace.fs.readDirectory = async (uri) => [...editor.files.keys()].map((key) => key.slice('file://'.length))
-    .filter((key) => path.dirname(key) === uri.path).map((key) => [path.basename(key), 1]);
-  const project = createProject(editor.vscode, { getInfo: () => ({ root }) }, assert.fail);
+  const project = createProject(editor.vscode, { getInfo: () => ({ root, ...editor.projectInfo }) }, assert.fail);
   t.after(() => project.dispose());
   const document = editor.document('/site/setup.typoscript', 'typoscript-v12');
   editor.put('/site/packages/site/composer.json', { type: 'typo3-cms-extension', name: 'vendor/site', extra: { 'typo3/cms': { 'extension-key': 'my_site' } } });
@@ -74,4 +72,45 @@ test('untitled documents retain local structure without reading unrelated projec
   assert.equal((await project.allSources(document)).length, 1);
   assert.equal((await project.resolveImport(document, { path: './constants.typoscript' })).uris.length, 0);
   assert.equal(editor.reads.length, 0);
+});
+
+test('Classic EXT imports use local and system directory names without Composer metadata', async (t) => {
+  const { editor, project, document } = setup(t);
+  editor.projectInfo = { webRoot: Uri.file('/site/www'), coreRoot: Uri.file('/site/www/typo3/sysext/core') };
+  editor.put('/site/www/typo3conf/ext/classic/Configuration/setup.typoscript', 'page = PAGE');
+  editor.put('/site/www/typo3/sysext/core/Configuration/setup.typoscript', 'lib.core = TEXT');
+  assert.equal((await project.resolveImport(document, { path: 'EXT:classic/Configuration/setup.typoscript' })).uris[0].path, '/site/www/typo3conf/ext/classic/Configuration/setup.typoscript');
+  assert.equal((await project.resolveImport(document, { path: 'EXT:core/Configuration/setup.typoscript' })).uris[0].path, '/site/www/typo3/sysext/core/Configuration/setup.typoscript');
+});
+
+test('site settings use the detected roots, include set defaults and refresh unsaved YAML', async (t) => {
+  const { editor, project, document } = setup(t);
+  editor.projectInfo = { webRoot: Uri.file('/site/www'), vendorRoot: Uri.file('/site/dependencies') };
+  editor.put('/site/www/typo3conf/sites/main/settings.yaml', 'site.title: Website from YAML');
+  editor.put('/site/packages/site/Configuration/Sets/Main/settings.definitions.yaml', 'settings:\n  site.title:\n    default: Default title\n    label: Website title');
+  editor.put('/site/dependencies/vendor/library/composer.json', { type: 'typo3-cms-extension', name: 'vendor/library' });
+  editor.put('/site/dependencies/vendor/library/Configuration/Sets/Library/settings.yaml', 'library.name: Library');
+  let definitions = await project.constantDefinitions(document);
+  assert.equal(definitions.filter((node) => node.path === 'site.title').length, 2);
+  assert.ok(definitions.some((node) => node.path === 'library.name'));
+  const yaml = editor.document('/site/www/typo3conf/sites/main/settings.yaml', 'yaml'); yaml.text = 'site.title: Unsaved YAML';
+  editor.events.text.fire({ document: yaml });
+  definitions = await project.constantDefinitions(document);
+  assert.ok(definitions.some((node) => node.path === 'site.title' && node.value.trim() === 'Unsaved YAML'));
+  editor.documents.splice(editor.documents.indexOf(yaml), 1); editor.events.close.fire(yaml);
+  assert.ok((await project.constantDefinitions(document)).some((node) => node.path === 'site.title' && node.value.trim() === 'Website from YAML'));
+  assert.deepEqual(await project.siteSettings(document, { isCancellationRequested: true }), []);
+});
+
+test('concurrent YAML requests share reads without one cancellation hiding another request\'s results', async (t) => {
+  const { editor, project, document } = setup(t);
+  const filename = '/site/config/sites/main/settings.yaml'; editor.put(filename, 'site.title: Website');
+  let release, entered;
+  const blocked = new Promise((resolve) => { release = resolve; }), reading = new Promise((resolve) => { entered = resolve; });
+  editor.readHook = async (uri) => { if (uri.path === filename) { entered(); await blocked; } };
+  const token = { isCancellationRequested: false };
+  const first = project.siteSettings(document, token), second = project.siteSettings(document);
+  await reading; token.isCancellationRequested = true; release();
+  assert.deepEqual(await first, []); assert.equal((await second)[0].path, 'site.title');
+  assert.equal(editor.reads.filter((uri) => uri === `file://${filename}`).length, 1);
 });

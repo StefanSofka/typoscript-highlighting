@@ -145,6 +145,19 @@ test('invalid messages and unknown targets cannot write configuration', async (t
   assert.equal(panel.messages.at(-1).targetId, 'user');
 });
 
+test('renderer disposal races consume rejected posts while unrelated delivery failures are reported', async (t) => {
+  const { open, configuration, picker, errors, color, writes } = setup(t);
+  const panel = open();
+  panel.webview.postMessage = async () => { throw new Error('Unknown webview handle:closed-renderer'); };
+  configuration.fire({ affectsConfiguration: () => true });
+  color(panel, 'comments', '#123456'); await picker.whenIdle();
+  assert.equal(writes.at(-1).value, '#123456'); assert.deepEqual(errors, []);
+  panel.webview.postMessage = async () => { throw new Error('Delivery failed'); };
+  configuration.fire({ affectsConfiguration: () => true });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(errors.at(-1).message, 'Delivery failed');
+});
+
 test('external edits and removed folders refresh the view; closing releases listeners', (t) => {
   const { open, values, configuration, folders, vscode, commands, picker } = setup(t, true);
   const panel = open();
