@@ -1,5 +1,15 @@
 # TypoScript Extension Project Review
 
+## Version 1.5.0: automatic installation context
+
+`lib/version.js` discovers Composer and Classic cores, keeps project/webroot/vendor/core paths together, and prefers the installed core over installed package metadata, lockfiles and manifest ranges. Core PHP is lexed for a literal class constant without execution. Classic symlinks and copied cores work; inactive archives are ignored. Sitepackage compatibility manifests yield to enclosing installations. Root markers stop incomplete nested sites from borrowing parent versions.
+
+The controller retains this context even when syntax is overridden, shares exact project watchers, and releases dependencies on close. A three-second check reads only the active core version per project, recovering symlink switches that VS Code's file service may omit. Window focus refreshes metadata. Source inspection and conflicts lead the status-bar command; manual version choices are an optional submenu.
+
+`lib/project.js` uses detected paths for Composer and manifest-free Classic EXT imports. `lib/site-settings.js` uses the packaged YAML parser to inspect scalar site settings and set defaults with source ranges, including unsaved edits. Shared YAML lookups batch at most 16 operations, inspect at most 300 locations and 500 files, and retain at most 20,000 scalar definitions. Aliases, tags, imports, database configuration and runtime override order are not evaluated. `lib/catalog.js` supplies a bounded core/property completion catalogue and advisory version migration hints; unknown/custom objects remain valid.
+
+The earlier release sections below provide historical context.
+
 ## Version 1.4.0: project editing and settings
 
 The extension now includes a structural parser and editor providers alongside the TextMate grammars. `lib/parser.js` analyzes objects, conditions, literal values, comments, imports and constant references without evaluating TYPO3. `lib/project.js` resolves relative/EXT imports, discovers extension Composer metadata, follows import graphs with cycle protection, and searches project references. `lib/features.js` exposes outline, folding, links, completion, definitions, references, hover, diagnostics, quick fixes and opt-in indentation formatting. `lib/snippets.js` separates setup and TSconfig suggestions.
@@ -49,7 +59,7 @@ The initial inspection used commit `6572d0d`, version 1.0.3, on October 2, 2026.
 | `README.md` | User instructions and development workflow |
 | `images/` and `LICENSE` | Original images and MIT license |
 
-The extension uses CommonJS JavaScript and generated JSON grammars, with no compilation step. It supplies TextMate scopes; themes determine the default colors. Optional category colors use `vscode-textmate` and `vscode-oniguruma` as the only runtime npm dependencies. These engines are loaded lazily when a visible document has an explicit color. It is a syntax highlighter with basic editing support, rather than a full TypoScript parser or language server. See the [VS Code syntax highlighting guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide).
+The extension uses CommonJS JavaScript and generated JSON grammars, with no compilation step. It supplies TextMate scopes; themes determine the default colors. Optional category colors use `vscode-textmate` and `vscode-oniguruma` as runtime npm dependencies; static site-settings parsing additionally uses `yaml`. These engines are loaded lazily when a visible document has an explicit color. It is a syntax highlighter with basic editing support, rather than a full TypoScript parser or language server. See the [VS Code syntax highlighting guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide).
 
 ## Language registration
 
@@ -81,7 +91,7 @@ Explicit colors use foreground-only editor decorations over ranges produced by t
 
 Token ranges are cached by document URI, version, and language mode. Edits are debounced for 75 ms and carry grammar state across lines when retokenized. Async initialization results are discarded if settings, document contents, language, visibility, or controller lifetime have changed. Closed documents release cached ranges. Disposal releases event listeners, timers, decoration types, and the TextMate registry.
 
-Only the two token engines' runtime JavaScript, package manifests, Oniguruma WASM, and license/notice files are allowlisted into the VSIX. The local picker JavaScript and CSS are also packaged and verified. Packaging tests reject other dependency files and development tools.
+The token engines' runtime JavaScript, manifests, Oniguruma WASM, license/notice files and the YAML parser's Node distribution and license are allowlisted into the VSIX. The local picker JavaScript and CSS are also packaged and verified. Packaging tests reject other dependency files and development tools.
 
 ## Findings resolved in version 1.0.4
 
@@ -113,4 +123,4 @@ The integration workspace now contains TYPO3 11/12/13/14 Composer projects. TYPO
 
 The release audit passes on VS Code 1.140.0 and VSCodium 1.135.06055 with bracket-pair colorization enabled, all four TYPO3 branches, LF/CRLF files, all nine categories, scope precedence, grammar changes, multiline edits, legacy/custom/shared colors, dark/light themes, spectrum/hex/keyboard input, reset and unrelated documents. The native token-color configuration is unchanged. A small picker correction keeps System Default enabled for invalid hex drafts and prevents a loading-time control from accessing an uninitialized category. The rendered suite is now part of CI, with JSON reports and failure screenshots uploaded as artifacts.
 
-The current feature set remains syntax highlighting and basic editing. Completion, semantic validation, formatting, snippets and an outline would be separate future work. The v12+ label identifies the modern syntax family shared by TYPO3 12, 13, and 14. Comment handling has been checked against the official documentation and both core tokenizers at pinned TYPO3 13.4 and 14.3 revisions; this verification covers comments and version selection rather than every version-specific TYPO3 feature. Marketplace and Open VSX publication are outside this repair.
+The initial audit covered syntax highlighting and basic editing. Later releases added source navigation, completion, diagnostics, optional formatting, snippets and outline providers, as described above. The v12+ label identifies the modern syntax family shared by TYPO3 12, 13, and 14. Comment handling has been checked against the official documentation and both core tokenizers at pinned TYPO3 13.4 and 14.3 revisions; this verification covers comments and version selection rather than every version-specific TYPO3 feature. Marketplace and Open VSX publication are outside this repair.

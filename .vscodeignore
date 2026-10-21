@@ -18,3 +18,6 @@
 !node_modules/vscode-oniguruma/NOTICES.txt
 !node_modules/vscode-oniguruma/release/main.js
 !node_modules/vscode-oniguruma/release/onig.wasm
+!node_modules/yaml/package.json
+!node_modules/yaml/LICENSE
+!node_modules/yaml/dist/**/*.js

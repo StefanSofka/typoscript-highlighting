@@ -145,6 +145,7 @@ async function run() {
   await palette(14, { comments: '#XYZ123', values: '#123' });
   await stage('invalid persisted values fall back to the theme', { major: 14, restore: 'dark-14' });
   await palette(14, {});
+  await config(14).update('commentRules', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
 
   await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
   await stage('light theme default', { major: 14, baseline: 'light-14', differs: 'dark-14' });
@@ -222,6 +223,7 @@ async function run() {
   await vscode.commands.executeCommand('workbench.view.explorer');
   await vscode.commands.executeCommand('outline.focus');
   await stage('project navigation and outline', { screenshot: 'project-navigation.png' });
+  if (process.env.TYPOSCRIPT_SCREENSHOT_DIR) await require('./installation').run(api, stage);
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await stage('complete', { editorVersion: vscode.version,
     extensionVersion: vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting').packageJSON.version });

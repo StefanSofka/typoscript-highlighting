@@ -40,15 +40,17 @@ for (const [major, version] of [[13, '13.4.0'], [14, '14.3.0']]) {
   }
 }
 
-test('resource settings are honored and forced modes avoid filesystem reads', async (t) => {
+test('resource overrides keep project context for import navigation', async (t) => {
   const { editor, controller } = setup(t);
   const old = editor.document('/old/setup.typoscript');
   const current = editor.document('/new/setup.typoscript');
   editor.settings.set(old.uri.toString(), 'v11');
   editor.settings.set(current.uri.toString(), 'v12');
+  editor.put('/old/composer.json', { require: { 'typo3/cms-core': '^13' } });
   await controller.refresh();
   assert.deepEqual(editor.documents.map((doc) => doc.languageId), ['typoscript-v11', 'typoscript-v12']);
-  assert.equal(editor.reads.length, 0);
+  assert.equal(controller.getInfo(editor.documents[0]).root.path, '/old');
+  assert.equal(controller.getInfo(editor.documents[0]).detected.major, 13);
 });
 
 test('unknown versions default to v12 without touching unrelated documents', async (t) => {
@@ -68,7 +70,7 @@ for (const mode of ['v13', 'v14']) test(`${mode} forces modern rules over a lega
   editor.mode = mode;
   await controller.refresh();
   assert.equal(editor.documents[0].languageId, 'typoscript-v12');
-  assert.equal(editor.reads.length, 0);
+  assert.equal(controller.getInfo(editor.documents[0]).detected.major, 11);
   editor.mode = 'auto';
   editor.events.configuration.fire({ affectsConfiguration: () => true });
   await controller.whenIdle();
@@ -118,7 +120,7 @@ test('initial manual language modes are preserved in auto mode', async (t) => {
   editor.document('/site/setup.typoscript', 'typoscript-v11');
   await controller.refresh();
   assert.equal(editor.documents[0].languageId, 'typoscript-v11');
-  assert.equal(editor.reads.length, 0);
+  assert.equal(controller.getInfo(editor.documents[0]).source, 'manual');
 });
 
 test('manual language changes override auto detection until generic TypoScript is selected', async (t) => {

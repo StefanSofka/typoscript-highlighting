@@ -2,7 +2,7 @@
 
 TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Version **1.4.0** adds import links, outline and structural folding, constant definitions and references, contextual snippets, migration hints and optional indentation formatting. Automatic TYPO3 detection works independently for different projects in one workspace.
+Version **1.5.0** automatically detects Composer and Classic TYPO3 installations, including active `typo3_src` symlinks. It adds version-aware core suggestions and YAML site-settings navigation. No version setting is needed for a complete project.
 
 [Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
@@ -12,25 +12,25 @@ Version **1.4.0** adds import links, outline and structural folding, constant de
 
 ## Installation
 
-Download **typoscript-highlighting-1.4.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
+Download **typoscript-highlighting-1.5.0.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
 
 ```bash
 # VSCodium
-codium --install-extension typoscript-highlighting-1.4.0.vsix
+codium --install-extension typoscript-highlighting-1.5.0.vsix
 
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.4.0.vsix
+code --install-extension typoscript-highlighting-1.5.0.vsix
 ```
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
 
-Requires a VS Code-compatible editor with API version **1.70 or newer**. No separate Node.js, PHP or Composer installation is needed. Composer metadata is optional and is read to identify your project and TYPO3 version.
+Requires a VS Code-compatible editor with API version **1.70 or newer**. No separate Node.js, PHP or Composer installation is needed. Available core files and Composer metadata identify your project and TYPO3 version without running project code.
 
 ## Quick start
 
 1. Open your TYPO3 project or Sitepackage folder.
 2. Open a `.typoscript` or `.tsconfig` file. Highlighting starts automatically.
-3. Check the **TYPO3 version indicator** in the status bar. Its tooltip explains whether the version came from `composer.lock`, a `composer.json` range, an explicit setting, a manual language selection or an unknown-version fallback.
+3. Check the **TYPO3 version indicator** in the status bar. Its tooltip explains the detected version, installation type, source file and any mismatch with the lockfile. Click it to inspect detection.
 4. Ctrl+click an `@import` path, open **Outline**, or invoke completion with **Ctrl+Space**.
 
 ## Navigate your project
@@ -47,7 +47,7 @@ Ctrl+click a quoted import path to open the file. On macOS, use Cmd+click. Suppo
 @import 'EXT:site_package/Configuration/TypoScript/*.typoscript'
 ```
 
-Wildcard and directory imports offer a file picker when several files match. Matches are sorted by filename. `EXT:` paths are resolved from extension Composer manifests, including `packages/`, installed vendor packages and conventional `typo3conf/ext/` locations. An extension's `extra.typo3/cms.extension-key` is preferred; extension package names provide a fallback.
+Wildcard and directory imports offer a file picker when several files match. Matches are sorted by filename. `EXT:` paths are resolved from extension Composer manifests, including `packages/`, installed vendor packages and conventional `typo3conf/ext/` locations. An extension's `extra.typo3/cms.extension-key` is preferred; extension package names provide a fallback. Classic extensions in `typo3conf/ext/` and the active core's `typo3/sysext/` also resolve by directory name without a Composer manifest. Detected custom webroots and vendor directories are respected.
 
 Modern imports follow TYPO3's file-level wildcard rules. Parent traversal and directory-level wildcards are not resolved. See the [TYPO3 import reference](https://docs.typo3.org/m/typo3/reference-typoscript/main/en-us/Syntax/FileImports/Index.html).
 
@@ -64,9 +64,23 @@ For a reference such as `{$site.name}`:
 - **Hover** shows definitions, source files and values as written.
 - **Ctrl+Space** inside `{$…}` suggests matching constant paths.
 
-Definition lookup follows imports and discovers conventional `constants.typoscript`, `*.constants.typoscript` and `constants.txt` files under the detected project root. Results are source definitions, not evaluated runtime values: database templates, site-settings YAML, conditions and TYPO3's final override order are not evaluated.
+Definition lookup follows imports and discovers conventional `constants.typoscript`, `*.constants.typoscript` and `constants.txt` files under the detected project root. Results are source definitions, not evaluated runtime values: database templates, conditions and TYPO3's final override order are not evaluated.
 
 At the start of a statement, completion offers snippets for object blocks, multiline values, imports and conditions. TypoScript files also offer `text`, `coa` and `fluid`; `.tsconfig` files offer `tceform` and `tcedefaults`.
+
+### Core suggestions and site settings
+
+After `page.10 = `, completion suggests common core content objects. After declaring `page.10 = TEXT`, `page.10.` suggests properties such as `value` and `wrap`, including inside object blocks. `config` and explicit `stdWrap` paths have focused suggestions. Each suggestion links to the TYPO3 reference. PAGEVIEW suggestions respect its introduction in TYPO3 13.1 when the exact version is known. Custom objects and properties remain valid.
+
+Constant navigation, hover and completion also read scalar settings from:
+
+- Composer sites: `config/sites/<site>/settings.yaml` and the `settings` section of `config.yaml`.
+- Classic sites: `typo3conf/sites/<site>/settings.yaml` and the `settings` section of `config.yaml`.
+- Site sets: `Configuration/Sets/<set>/settings.yaml` and scalar defaults in `settings.definitions.yaml`.
+
+Both dotted maps and nested settings trees work. Hover labels definitions and defaults with their source files; several sites may define the same key. These are project candidates, not a reconstructed active site or final runtime value. YAML aliases, custom tags, imports and set dependency order are not resolved. Unsaved YAML edits update navigation and hover.
+
+[![Peek Definition opens YAML site settings and set defaults from TypoScript.](images/screenshots/site-settings-navigation.png)](images/screenshots/site-settings-navigation.png)
 
 ### Diagnostics and migration
 
@@ -74,28 +88,36 @@ The Problems view reports incomplete object blocks, multiline values, comments a
 
 `<INCLUDE_TYPOSCRIPT: …>` is deprecated since TYPO3 13.4 and removed in TYPO3 14. For a simple compatible file import, **Quick Fix → Replace with @import** performs the migration. Imports with extra attributes or incompatible file types require manual migration.
 
+Advisory warnings also identify the removed core `TEMPLATE` object and `PAGEVIEW` on exact targets older than 13.1. Custom extension implementations may supply these names, so these hints do not block editing.
+
 Project import resolution depends on the files available to the editor. You can disable diagnostics for a folder when its dependencies are supplied elsewhere.
 
-## TYPO3 target version
+## Automatic TYPO3 detection
 
-Leave **Typo3 Version** on **Auto** for most projects. Detection searches upwards from each document for the nearest TYPO3 Composer project, including above the opened Sitepackage folder.
+Open your project and start editing. Detection works independently for each installation, including nested projects and multi-root workspaces. An extension's compatibility range does not hide its enclosing TYPO3 installation.
 
-- A usable installed version in `composer.lock` takes precedence.
-- Otherwise, supported requirements in `composer.json` select a syntax family.
-- Ambiguous or unknown versions use modern comment rules, explicitly shown as a **Fallback**.
-- TYPO3 11 uses legacy comments. TYPO3 12–14 share modern comment rules; the exact target version is also used for migration hints.
+| Installation | Version source |
+| --- | --- |
+| Composer | Installed `vendor/typo3/cms-core/Classes/Information/Typo3Version.php`; otherwise `vendor/composer/installed.json`, `composer.lock`, then a `composer.json` requirement. Configured `vendor-dir` and TYPO3 `web-dir` paths are respected. |
+| Classic / Legacy | The active `typo3/sysext/core/Classes/Information/Typo3Version.php` or `typo3_src/typo3/sysext/core/Classes/Information/Typo3Version.php`, through symlinks or in a copied core. Conventional `public/`, `web/` and `htdocs/` layouts also work. |
 
-Click the status indicator or run **TypoScript Highlighting: Select TYPO3 Version** to select Auto, an explicit version, the Composer source, or re-detection. A version selected there is saved for the active folder, or in User settings for a standalone file.
+[![Classic TYPO3 detection follows the active core without a Composer project.](images/screenshots/automatic-detection-classic.png)](images/screenshots/automatic-detection-classic.png)
 
-```json
-{
-  "typoscriptHighlighting.typo3Version": "auto"
-}
-```
+The installed core takes precedence over lockfiles. A mismatch is visible in the status bar and detection details, with actions to open both sources. A lockfile result is labelled **Locked**, while a manifest requirement is labelled **Range**. A range never claims an exact installed version. Inactive `typo3_src-…` archives are ignored.
 
-In Auto mode, manually choosing **TypoScript (v11)** or **TypoScript (v12+)** in the language selector pins that document. Choose **TypoScript**, or select Auto through the version command, to resume detection. Automatic choices remain automatic after extension-host restarts. Explicit target settings take precedence over a manual language pin.
+[![Composer detection explains an installed core and a conflicting lockfile.](images/screenshots/automatic-detection-composer.png)](images/screenshots/automatic-detection-composer.png)
 
-The old `typoscriptHighlighting.commentRules` setting remains compatible when the new target-version setting has not been explicitly configured. Existing `v11`, `v12`, `v13` and `v14` values continue to work.
+Core files are read as text; PHP and Composer are never executed. Filesystem events refresh detection. A small check of the core version every three seconds also handles symlink switches omitted by editor file watchers. Window focus and **Re-detect project** refresh cached metadata. No recursive polling is performed.
+
+TYPO3 11 uses legacy comments. TYPO3 12–14 share modern comment rules. Ambiguous, missing or unsupported versions use the documented modern fallback; an incomplete nested installation does not borrow an unrelated parent's version.
+
+### Optional target override
+
+A standalone extension may support several TYPO3 versions without a local installation. In this case, click the indicator or run **TypoScript Highlighting: Inspect TYPO3 Detection**, then choose **Override target version…**. The override is saved for the active folder, or in User settings for a standalone file. **Use automatic detection** removes the override and manual language pin.
+
+The advanced `typoscriptHighlighting.typo3Version` setting remains compatible (`auto`, `v11`, `v12`, `v13`, `v14`); leave it at its default for complete projects. The old `commentRules` setting is honored when `typo3Version` has not been explicitly configured.
+
+Manually selecting **TypoScript (v11)** or **TypoScript (v12+)** pins that document. Choose **TypoScript**, or **Use automatic detection**, to resume detection. Automatic choices remain automatic after restarts. Explicit overrides take precedence over a manual pin while preserving detected project paths for navigation.
 
 ### Shared language settings
 
@@ -148,7 +170,7 @@ Search Settings for `typoscriptHighlighting`. All extension options can be confi
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `typoscriptHighlighting.typo3Version` | `"auto"` | Auto, v11, v12, v13 or v14 target version. |
+| `typoscriptHighlighting.typo3Version` | `"auto"` | Advanced optional override; complete Composer and Classic projects detect automatically. |
 | `typoscriptHighlighting.colors.*` | `""` | Base foreground colors for nine syntax categories. |
 | `typoscriptHighlighting.darkColors` | `{}` | Optional category overrides for dark themes. |
 | `typoscriptHighlighting.lightColors` | `{}` | Optional category overrides for light themes. |
@@ -211,7 +233,7 @@ Check the selected save scope, Base/Dark/Light palette and the row's origin/over
 
 ### An import cannot be resolved
 
-Check that the extension is available in the opened project and that its Composer extension key matches the `EXT:` path. Modern imports use `./` or `EXT:`, a quoted path and wildcards only in the filename. The extension does not run TYPO3 to discover database or backend-managed configuration.
+Check that the extension is available in the detected installation. Its Composer extension key or Classic directory name must match the `EXT:` path. Modern imports use `./` or `EXT:`, a quoted path and wildcards only in the filename. The extension does not run TYPO3 to discover database or backend-managed configuration.
 
 For update errors, open **View → Output → TypoScript Highlighting**. When [reporting an issue](https://github.com/StefanSofka/typoscript-highlighting/issues/new), include a small example, TYPO3/editor versions, version-indicator source, relevant settings and a screenshot.
 

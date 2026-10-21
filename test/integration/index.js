@@ -150,7 +150,9 @@ async function run() {
   console.log('PASS: registered spectrum command opens and reuses its view without changing settings');
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await require('./features').run(controller);
+  await require('./installation').run(controller);
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  await fs.writeFile(path.join(root, 'integration-result.json'), JSON.stringify({ passed: true, editorVersion: vscode.version }));
 }
 
 module.exports = { run };

@@ -245,10 +245,10 @@ async function runColorProbe(directory, port, reportFile) {
       }
       if (current.screenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
         await fs.mkdir(process.env.TYPOSCRIPT_SCREENSHOT_DIR, { recursive: true });
-        if (current.screenshot !== 'project-navigation.png') {
+        if (current.screenshot !== 'project-navigation.png' && !current.editorScreenshot) {
           const ui = await picker();
           await ui(`document.activeElement?.blur(); window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0;`);
-        } else {
+        } else if (current.screenshot === 'project-navigation.png') {
           const sash = await evaluate(`(() => {
             const candidates = [...document.querySelectorAll('.part.sidebar .monaco-sash.horizontal')]
               .map(node => node.getBoundingClientRect()).filter(r => r.width > 100 && r.height > 0 && r.y > 250 && r.y < 1000)

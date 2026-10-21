@@ -263,3 +263,22 @@ Implemented the follow-up review on the `dev` branch:
 Verification includes unit/regression/package-content tests, native provider integration on VSCodium 1.140 and VS Code 1.70.0, and rendered foreground comparisons with real picker interaction. Documentation screenshots are captured from the isolated VSCodium instance and visually reviewed. Screenshot-only stages maximize the picker after foreground assertions, then restore the editor layout.
 
 The extension remains a source-oriented editing assistant. It does not evaluate conditions, execute TYPO3, load database templates or reconstruct the final effective runtime configuration. Formatting is disabled by default and changes only indentation on recognized code lines in structurally complete documents.
+
+
+## Version 1.5.0: Composer and Classic detection, October 21, 2026
+
+Starting revision: `3436f6d`, version 1.4.0. The follow-up implements automatic installed-core discovery for Composer and Classic installations and the related project-navigation improvements.
+
+- Read the literal version from the namespaced core class without executing PHP. Respect configured Composer vendor/webroot paths, installed.json formats, locked versions, conservative manifest ranges, copied cores and active Classic symlinks. Inactive source archives are ignored. Composer migrations with leftover sysext copies prefer the declared Composer installation's vendor core.
+- Keep installation context for imports even with a syntax override. Enclosing installations take precedence over a Sitepackage's compatibility range; incomplete nested sites retain their own boundary. Core/lock conflicts are visible and both sources can be opened.
+- Reuse project roots for EXT imports, including manifest-free Classic local and system extensions. Provide a focused core/property completion catalogue, exact-version PAGEVIEW gating and advisory TEMPLATE/PAGEVIEW migration hints.
+- Read static YAML site settings and scalar set defaults, including dotted maps, nested trees, locations, documentation and unsaved edits. Alias/tag/import resolution, site-set activation order and runtime values remain outside the parser. Shared in-flight requests use batches of at most 16 reads/searches, up to 300 locations, 500 files and 20,000 scalar definitions per project lookup. Closing a discarded YAML edit invalidates cached definitions.
+- Move manual version selection behind an optional override action. Retain both existing version settings for compatibility; default Auto needs no configuration.
+
+The native VSCodium run demonstrated that the file service can omit symlink replacement events. A three-second check now reads the active core's small version file once per detected project, without recursive polling. Incomplete known installations can recover when the core reappears. Closed projects stop reading and release their watchers. Watch roots are restricted to existing directories because VS Code 1.70 logs errors when asked to watch missing bases.
+
+Verification: all 226 unit/regression/package-content tests and authored JavaScript/grammar checks pass. Native integration covers VSCodium 1.140.0 and VS Code 1.70.0, including a real active symlink switch without manual refresh, Classic EXT imports, custom Composer roots, core/lock mismatch, enclosing project discovery, YAML navigation/hover/completion and unsaved YAML updates. The visual VSCodium run passes 53 scenarios (including six screenshot-only stages), 305 token ranges and 6,204 character foreground comparisons. Seven documentation screenshots are captured from the isolated editor and visually reviewed. Runtime npm dependencies have no reported audit vulnerabilities.
+
+The integration runner now requires a completion record from the extension host: using a CLI wrapper previously exited successfully without running provider assertions. The documented VSCodium executable is the actual editor binary.
+
+Packaged minimum-version verification also exposed a color-picker disposal race: a renderer can disappear before the extension receives its close event. All webview posts now consume the expected old-editor RPC rejection while reporting unrelated delivery failures; a regression test covers both cases.

@@ -40,7 +40,7 @@ test('nearest installed lockfile wins over manifest and ancestor projects', asyn
   editor.put('/sites/shop/composer.lock', { packages: [{ name: 'typo3/cms-core', version: '11.5.42' }] });
   const detector = createVersionDetector(editor.vscode);
   assert.equal(await detector.detect(editor.document('/sites/shop/packages/site/setup.typoscript')), 11);
-  assert.ok(!editor.reads.includes('file:///sites/shop/composer.json'));
+  assert.ok(editor.reads.includes('file:///sites/shop/composer.json'), 'manifest supplies configurable project paths');
 });
 
 test('invalid or unrelated lockfiles fall back to requirements', async () => {

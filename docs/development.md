@@ -25,7 +25,7 @@ npm test
 
 ## Editor integration tests
 
-The integration runner creates temporary TYPO3 11, 12, 13 and 14 Composer projects and an isolated editor profile. It tests project detection, Composer watcher updates, folder settings, manual language selection, comment toggling, color settings/reset, the picker command and explicit version settings.
+The integration runner creates temporary TYPO3 11, 12, 13 and 14 Composer projects and an isolated editor profile. It tests project detection, Composer watcher updates, folder settings, manual language selection, comment toggling, color settings/reset, the picker command and explicit version settings. Additional fixtures exercise real Classic symlinks, automatic target switches, manifest-free EXT imports, configured Composer paths, core/lock conflicts, enclosing installation selection, YAML definitions/hover/completion and unsaved YAML edits. A completion record written by the extension host prevents a CLI wrapper from producing a false successful run.
 
 The provider suite also checks real outline entries, folding, relative and EXT wildcard links, constant definitions/references/hover/completion, contextual snippets, diagnostics, migration edits and idempotent CRLF formatting. Tests use public editor commands when available; VS Code 1.70 predates the public folding-provider test command, so that check runs on current editors while structural folding is covered by unit tests on every runtime.
 
@@ -57,7 +57,7 @@ Reports default to `.vscode-test/color-results.json`. Failed runs attempt to sav
 | `VSCODE_VERSION` | Download a particular VS Code build, such as `1.70.0`, when no executable is supplied. |
 | `TYPOSCRIPT_COLOR_REPORT` | Choose the rendered-color JSON report path. |
 | `TYPOSCRIPT_EXTENSION_PATH` | Load an extracted VSIX's extension directory to test packaged runtime files. |
-| `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real dark/light picker, editor and outline screenshots during the color suite. |
+| `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real dark/light picker, editor, outline, Classic/Composer detection and YAML navigation screenshots during the color suite. |
 | `TYPOSCRIPT_TEST_VIEWPORT` | Set a compact color-test viewport such as `1024x800`; screenshot mode uses its fixed larger viewport. |
 
 To verify the declared minimum and regenerate documentation screenshots:
@@ -84,7 +84,7 @@ npm run package
 npx --no-install vsce ls --tree
 ```
 
-The package includes runtime modules, picker assets, language configurations, grammars, images and documentation. The two runtime token engines include Oniguruma's WASM binary and their license notices. `.vscodeignore` allowlists the required files; development tools and tests are excluded. Building a VSIX does not publish it to an extension registry.
+The package includes runtime modules, picker assets, language configurations, grammars, images and documentation. The runtime token engines include Oniguruma's WASM binary and license notices. The Node distribution and ISC license of the static YAML parser are included too. `.vscodeignore` allowlists the required files; development tools and tests are excluded. Building a VSIX does not publish it to an extension registry.
 
 GitHub Actions runs regression checks and packaging on Node.js 22, 24 and 26, integration on VS Code 1.70.0 and stable, and rendered-color checks on stable. The color job uploads its JSON report and any failure screenshot.
 
