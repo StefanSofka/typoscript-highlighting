@@ -17,7 +17,7 @@ function setup(t, active = false, storage) {
   const folder = { name: 'Site', uri: Uri.file('/site') };
   const config = (uri) => ({
     inspect(key) {
-      return { defaultValue: key.endsWith('Colors') ? {} : '', globalValue: values.get(`1:${key}`),
+      return { defaultValue: key === 'skin' ? 'auto' : key.endsWith('Colors') ? {} : '', globalValue: values.get(`1:${key}`),
         workspaceValue: values.get(`2:${key}`), workspaceFolderValue: values.get(`3:${uri?.toString()}:${key}`) };
     },
     get(key, fallback) {
@@ -84,7 +84,8 @@ test('command opens a local spectrum view without saving settings and reuses the
   assert.equal(panel.messages.at(-1).colors.length, 9);
   assert.equal(panel.messages.at(-1).category, 'values');
   assert.equal(panel.messages.at(-1).targetId, 'user');
-  assert.ok(panel.messages.at(-1).colors.every((entry) => entry.color === ''));
+  assert.equal(panel.messages.at(-1).skin.selected, 'auto');
+  assert.ok(panel.messages.at(-1).colors.every((entry) => /^#[0-9A-F]{6}$/.test(entry.color)));
   assert.deepEqual(panel.options.localResourceRoots.map((uri) => uri.path), ['/extension/media']);
   assert.ok(panel.webview.html.includes("default-src 'none'"));
   assert.ok(panel.webview.html.includes('color-settings.js'));
@@ -136,6 +137,7 @@ test('invalid messages and unknown targets cannot write configuration', async (t
   const { open, picker, writes } = setup(t);
   const panel = open();
   for (const message of [null, {}, { type: 'color', category: 'comments', color: '#123', id: 1 },
+    { type: 'skin', skin: 'unknown', id: 1 }, { type: 'skin', skin: 'constructor', id: 1 }, { type: 'skin', skin: 'dark', id: '1' },
     { type: 'color', category: 'constructor', color: '#123456', id: 1 },
     { type: 'color', category: 'comments', color: null, id: 1 },
     { type: 'color', category: 'comments', color: '#123456', id: '1' },
@@ -241,4 +243,45 @@ test('picker remembers scope and palette but starts with User on first use', (t)
   assert.equal(panel.messages.at(-1).palette, 'light');
   panel.received.fire({ type: 'target', targetId: 'user' });
   assert.equal(memory.get('colorTarget'), 'user');
+});
+
+test('skin selection preserves custom colors and supports inheritance and exact undo', async (t) => {
+  const { open, picker, values, writes } = setup(t, true);
+  values.set('1:skin', 'nord');
+  values.set('1:colors.comments', '#123456');
+  const panel = open();
+  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
+  assert.equal(panel.messages.at(-1).skin.inherited, true);
+  panel.received.fire({ type: 'skin', skin: 'monokai', id: 1 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:skin'), 'monokai');
+  assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
+  assert.equal(panel.messages.at(-1).skin.inherited, false);
+  assert.deepEqual(writes.map(({ key }) => key), ['skin']);
+  panel.received.fire({ type: 'skin', skin: 'inherit', id: 2 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:skin'), undefined);
+  assert.equal(panel.messages.at(-1).skin.selected, 'nord');
+  panel.received.fire({ type: 'undo', id: 3 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:skin'), 'monokai');
+  panel.received.fire({ type: 'undo', id: 4 });
+  await picker.whenIdle();
+  assert.equal(values.get('3:file:///site:skin'), undefined);
+});
+
+test('queued skin selections retain the selected scope and failed saves do not create undo entries', async (t) => {
+  const { open, picker, writes, hook, errors } = setup(t, true);
+  const panel = open();
+  hook(async () => { throw new Error('Read only'); });
+  panel.received.fire({ type: 'skin', skin: 'dark', id: 1 });
+  await picker.whenIdle();
+  assert.equal(errors.length, 1);
+  assert.equal(panel.messages.at(-1).canUndo, false);
+  hook(undefined);
+  panel.received.fire({ type: 'skin', skin: 'nord', id: 2 });
+  panel.received.fire({ type: 'target', targetId: 'workspace' });
+  panel.received.fire({ type: 'skin', skin: 'solarized', id: 3 });
+  await picker.whenIdle();
+  assert.deepEqual(writes.map(({ key, value, target }) => [key, value, target]), [['skin', 'nord', 1], ['skin', 'solarized', 2]]);
 });

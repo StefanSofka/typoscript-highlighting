@@ -11,6 +11,7 @@ function setup(t, loadTokenizer) {
   function open(text, language = 'typoscript-v12', filename = '/site/setup.typoscript') {
     const document = editor.document(filename, language);
     document.text = text;
+    editor.skins.set(document.uri.toString(), 'editor');
     return editor.textEditor(document);
   }
   function colors(textEditor, palette) { editor.palettes.set(textEditor.document.uri.toString(), palette); }

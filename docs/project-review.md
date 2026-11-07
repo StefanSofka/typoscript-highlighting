@@ -30,7 +30,7 @@ The extension now includes a structural parser and editor providers alongside th
 
 The controller remembers whether a document's language was automatic or manually pinned in workspace storage, including when a forced version temporarily changes the applied grammar. Directory dependencies release Composer watchers as documents close. Version results retain installed versions, Composer constraints and source URIs; ambiguous lock versions retain their actual source rather than naming an absent manifest.
 
-Color tokenization reuses unchanged line states and stops when a changed region converges with the cached suffix. `lib/palette.js` centralizes categories, scope origins and theme palette inheritance. The picker supports explicit theme reset, removal of local overrides, bulk operations, bounded dialog undo, remembered User/Workspace/Folder destinations, optional dark/light palettes, a preview and contrast feedback. User settings are the first-use destination. Existing hex and legacy custom settings remain compatible.
+Color tokenization reuses unchanged line states and stops when a changed region converges with the cached suffix. `lib/skins.js` supplies five complete syntax skins; the default Automatic selection resolves Light/Dark from the editor's active mode. `lib/palette.js` centralizes skin resolution, categories, scope origins and theme palette inheritance for both the editor and picker. Explicit category values (including empty native-theme resets) take precedence over skin defaults. The picker supports skin selection/inheritance, explicit theme reset, removal of local overrides, bulk operations, bounded dialog undo, remembered User/Workspace/Folder destinations, optional dark/light palettes, a preview and contrast feedback. User settings are the first-use destination. Existing hex and legacy custom settings remain compatible.
 
 Project discovery is bounded: up to 1,000 extension manifests, 200 conventional constants files, 300 imported sources and 1,000 project reference candidates per lookup. Imported vendor sources remain available; the broad reference scan excludes vendor and generated directories. Cancellation and document versions prevent obsolete diagnostics. Runtime values, database templates and site-settings YAML are not evaluated.
 
@@ -59,7 +59,9 @@ The initial inspection used commit `6572d0d`, version 1.0.3, on October 2, 2026.
 | `lib/site-settings.js` | YAML syntax, typed setting definitions, imports and value validation |
 | `lib/site-set-features.js` | YAML dependency/setting navigation, hover, links and completion |
 | `lib/site-context.js` | Site-context status, persisted selection and load-order inspector |
-| `lib/colors.js` | Optional per-resource foreground colors, editor decorations, caching and lifecycle handling |
+| `lib/colors.js` | Per-resource skin/custom foregrounds, editor decorations, caching and lifecycle handling |
+| `lib/skins.js` | Five bundled skins, automatic Light/Dark selection and native Editor theme option |
+| `lib/palette.js` | Shared skin/category resolution, scope origins and Base/Dark/Light inheritance |
 | `lib/color-settings.js` | Spectrum command, scoped settings, serialized writes and webview lifecycle |
 | `media/` | Local spectrum picker controls, hex validation and editor-themed styles |
 | `lib/tokenizer.js` | Lazy TextMate/Oniguruma initialization and grammar-based syntax categories |
@@ -76,7 +78,7 @@ The initial inspection used commit `6572d0d`, version 1.0.3, on October 2, 2026.
 | `README.md` | User instructions and development workflow |
 | `images/` and `LICENSE` | Original images and MIT license |
 
-The extension uses CommonJS JavaScript and generated JSON grammars, with no compilation step. It supplies TextMate scopes; themes determine the default colors. Optional category colors use `vscode-textmate` and `vscode-oniguruma` as runtime npm dependencies; static site-settings parsing additionally uses `yaml`. These engines are loaded lazily when a visible document has an explicit color. It is a syntax highlighter with basic editing support, rather than a full TypoScript parser or language server. See the [VS Code syntax highlighting guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide).
+The extension uses CommonJS JavaScript and generated JSON grammars, with no compilation step. It supplies TextMate scopes plus bundled syntax skins and optional category overrides. Foreground decorations use `vscode-textmate` and `vscode-oniguruma` as runtime npm dependencies; static site-settings parsing additionally uses `yaml`. Token engines load lazily when a visible TypoScript document needs skin or custom colors. With Editor theme selected and no custom overrides, native TextMate highlighting needs no extension-side tokenizer. It is a syntax highlighter with basic editing support, rather than a full TypoScript parser or language server. See the [VS Code syntax highlighting guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide).
 
 ## Language registration
 
@@ -98,13 +100,15 @@ Reads use `workspace.fs`, including remote resources, and cached directory promi
 
 Explicit `v11`, `v12`, `v13`, and `v14` settings override automatic detection. The three modern choices deliberately map to the same `typoscript-v12` language mode. In automatic mode, a manually selected version mode is preserved for the open document; choosing the generic TypoScript mode resumes detection. Extension-generated close/open events are distinguished from manual language changes. Per-document update queues discard stale detection results. Closed documents and disposed controllers are not updated, and rejected language changes are reported through the output channel.
 
-## Optional category colors
+## Syntax skins and category colors
 
-Nine resource-scoped `typoscriptHighlighting.colors.*` settings accept direct six-digit hex colors. Every default is an empty string, meaning System Default: the active editor theme supplies the foreground without extension decorations. Each setting links to the spectrum view, also opened through the Configure Colors command. The view provides saturation/brightness and hue controls, hex input, per-category reset, and User/Workspace/Folder scope selection. Invalid input is not saved; settings writes are serialized to preserve fast changes to different categories.
+The resource-scoped `typoscriptHighlighting.skin` setting defaults to `auto` and resolves to Light or Dark from the active editor mode. The five preset choices are Dark, Light, Nord, Monokai and Solarized; `editor` retains native syntax colors. Nord, Monokai and Solarized adapt to both light and dark backgrounds. Skin changes update visible files and the picker immediately without rewriting native editor settings.
+
+Nine resource-scoped `typoscriptHighlighting.colors.*` settings accept direct six-digit hex colors. An unconfigured category inherits the skin. An explicitly saved empty string requests System Default: the active editor theme supplies that category's foreground without extension decorations. Optional Dark/Light category overrides take precedence over Base overrides and skin colors. Each setting links to the spectrum view, also opened through the Configure Colors command. The view provides skin selection, saturation/brightness and hue controls, hex input, per-category reset, and User/Workspace/Folder scope selection. Invalid input is not saved; settings writes are serialized to preserve fast changes to different categories.
 
 The view resolves scope inheritance through configuration inspection. A System Default action writes an explicit empty value to mask inherited extension color overrides. Existing 1.2.0 `custom` selections still resolve the matching legacy custom-color object; picker edits replace them with direct hex values. Settings changes refresh both the color decorations and the open picker. The panel is created only when requested, reused while open, and releases message listeners when closed. Local resource roots and a restrictive content security policy limit its assets to the packaged picker files.
 
-Explicit colors use foreground-only editor decorations over ranges produced by the same modern/legacy grammars that the editor uses. The most specific recognized scope determines the category, preserving distinct constants inside values and recognized imports inside v11 comments. The extension reads its own settings and never writes native theme or token-color settings.
+Skin and custom colors use foreground-only editor decorations over ranges produced by the same modern/legacy grammars that the editor uses. The most specific recognized scope determines the category, preserving distinct constants inside values and recognized imports inside v11 comments. The extension reads its own settings and never writes native theme or token-color settings.
 
 Token ranges are cached by document URI, version, and language mode. Edits are debounced for 75 ms and carry grammar state across lines when retokenized. Async initialization results are discarded if settings, document contents, language, visibility, or controller lifetime have changed. Closed documents release cached ranges. Disposal releases event listeners, timers, decoration types, and the TextMate registry.
 

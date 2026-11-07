@@ -194,6 +194,15 @@ async function runColorProbe(directory, port, reportFile) {
         await (await picker())(`document.getElementById('reset-all').click()`);
       } else if (current.action === 'picker-bulk-inherit') {
         await (await picker())(`document.getElementById('inherit-all').click()`);
+      } else if (current.action === 'picker-skin') {
+        const ui = await picker();
+        assert.equal(await ui(`document.getElementById('skin').options.length`), 7);
+        await ui(`(() => { const palette = document.getElementById('palette'); palette.value = 'base'; palette.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await until('base palette selected', async () => await ui(`document.getElementById('palette').value === 'base'`));
+        await ui(`(() => { const skin = document.getElementById('skin'); skin.value = ${JSON.stringify(current.skin)}; skin.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await until('skin selection saved', async () => await ui(`document.getElementById('status').textContent !== 'Saving…' && document.getElementById('skin').value === ${JSON.stringify(current.skin)}`));
+      } else if (current.action === 'picker-skin-inherit') {
+        await (await picker())(`document.getElementById('inherit-skin').click()`);
       } else if (current.action === 'picker-palette') {
         const ui = await picker();
         await ui(`(() => { const palette = document.getElementById('palette'); palette.value = ${JSON.stringify(current.palette)}; palette.dispatchEvent(new Event('change', { bubbles: true })); })()`);

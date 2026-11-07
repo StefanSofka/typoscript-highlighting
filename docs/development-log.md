@@ -305,3 +305,15 @@ Starting revision: `429fdc1`, version 1.6.0. Marketplace upload rejected the VSI
 Re-encode the existing icon as a real RGB PNG, retaining all 1024 × 1024 decoded pixels exactly. Add a regression test for the PNG signature, IHDR header and minimum 128 × 128 dimensions; the new assertion reproduces the original failure before the asset is corrected. Update the manifest, lockfile and installation instructions to 1.6.1. Extension runtime code and screenshots are unchanged.
 
 Release validation includes authored JavaScript/grammar checks, 239 regression/package-content tests, decoding the icon extracted from the final VSIX and comparing its pixels with the original image. The release includes the rebuilt VSIX and a matching SHA-256 checksum.
+
+## Version 1.7.0: Ready-to-use syntax skins, November 7, 2026
+
+Add five bundled foreground skins: Dark, Light, Nord, Monokai and Solarized. Automatic is the installation default and selects Light/Dark from the active editor color mode without writing settings. OS changes propagate when the editor follows the system. Nord, Monokai and Solarized provide both dark and light variants. The workbench/background and the editor's OS-following preference remain under editor control.
+
+Share color resolution between the picker and open documents. The order is active Dark/Light category overrides, Base category overrides, then the skin. A saved empty category value continues to request the native editor theme; an absent value inherits the skin. Direct hex and legacy custom selections retain compatibility. Editor theme remains available for native syntax colors.
+
+Add the skin selector to the existing color dialog, using its User/Workspace/Folder destination and serialized writes. Skin inheritance and undo preserve the distinction between an absent setting and an explicit selection. Skin changes preserve existing category overrides. Failed skin saves do not create undo entries; failed undo keeps the entry available. Update the README, settings descriptions, development guide, package-content checks and the real VSCodium picker screenshot.
+
+Verification: authored JavaScript/grammar checks and all 247 regression/package-content tests pass. Native integration passes on VSCodium 1.143.1 and the declared minimum VS Code 1.70.0. The rendered VSCodium suite passes 60 scenarios, 539 token ranges and 8,076 character foreground comparisons, including a fresh unconfigured installation, all five skins, live automatic Light/Dark changes, real selector operation, custom-color precedence, inheritance and undo. The 1024 × 800 CI viewport passes the same checks. The screenshot variant passes 69 scenarios and provides visually verified skin-selector, dark editor and dark/light palette captures. Manifest and lockfile are synchronized to 1.7.0.
+
+Release preparation points the README installation instructions at GitHub release `v1.7.0`, refreshes the current architecture description and packages the finalized source with the documentation screenshots. The GitHub release includes `typoscript-highlighting-1.7.0.vsix` and its SHA-256 checksum. Extension registry publication remains separate.

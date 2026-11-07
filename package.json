@@ -2,7 +2,7 @@
 	"name": "typoscript-highlighting",
 	"displayName": "TYPO3 - TypoScript Highlighting",
 	"description": "TypoScript and TSconfig highlighting, TYPO3 site sets, typed settings, import navigation and configurable colors for VS Code and VSCodium.",
-	"version": "1.6.1",
+	"version": "1.7.0",
 	"publisher": "stefan-sofka",
 	"license": "MIT",
 	"author": {
@@ -71,6 +71,24 @@
 		"configuration": {
 			"title": "TypoScript Highlighting",
 			"properties": {
+				"typoscriptHighlighting.skin": {
+					"type": "string",
+					"scope": "resource",
+					"default": "auto",
+					"enum": ["auto", "dark", "light", "nord", "monokai", "solarized", "editor"],
+					"enumItemLabels": ["Automatic (Light / Dark)", "Dark", "Light", "Nord", "Monokai", "Solarized", "Editor theme"],
+					"enumDescriptions": [
+						"Choose Light or Dark automatically from the editor color mode; follows OS changes when the editor follows the system.",
+						"Classic colors for a dark editor background.",
+						"Classic colors for a light editor background.",
+						"Cool blue and muted colors, adapted to light and dark editors.",
+						"Vivid green, pink and gold, adapted to light and dark editors.",
+						"Warm earth tones with blue and teal, adapted to light and dark editors.",
+						"Use the syntax colors supplied by the active editor theme."
+					],
+					"markdownDescription": "TypoScript syntax skin. **Automatic** works immediately after installation and switches between Light and Dark with your editor color mode. If the editor follows the OS, the skin follows system changes too. Custom category colors take precedence. [Choose a skin and customize colors](command:typoscriptHighlighting.configureColors).",
+					"order": 1
+				},
 				"typoscriptHighlighting.typo3Version": {
 					"type": "string",
 					"scope": "resource",
@@ -138,7 +156,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Comments and comment delimiters. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22comments%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Comments and comment delimiters. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22comments%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 10,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -147,7 +165,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Object paths and copy/reference targets. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22objectPaths%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Object paths and copy/reference targets. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22objectPaths%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 11,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -156,7 +174,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Assignment values and quoted strings. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22values%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Assignment values and quoted strings. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22values%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 12,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -165,7 +183,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Assignment, copy/reference, modification, and deletion operators. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22operators%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Assignment, copy/reference, modification, and deletion operators. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22operators%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 13,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -174,7 +192,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Constant references such as `{$site.name}`. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22constants%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Constant references such as `{$site.name}`. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22constants%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 14,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -183,7 +201,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Conditions and END/GLOBAL/ELSE keywords. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22conditions%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Conditions and END/GLOBAL/ELSE keywords. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22conditions%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 15,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -192,7 +210,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Import keywords, file paths, and legacy import attributes. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22imports%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Import keywords, file paths, and legacy import attributes. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22imports%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 16,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -201,7 +219,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Value modification functions such as `addToList`. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22functions%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Value modification functions such as `addToList`. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22functions%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 17,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
@@ -210,7 +228,7 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "",
-					"markdownDescription": "Block braces, value/argument parentheses, and legacy import closing brackets. Enter a `#RRGGBB` color or leave empty for **System Default** (the active theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22punctuation%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
+					"markdownDescription": "Block braces, value/argument parentheses, and legacy import closing brackets. Unconfigured categories use the selected skin. Enter a `#RRGGBB` color to override it, or explicitly save an empty value for **System Default** (the active editor theme). [Open color picker](command:typoscriptHighlighting.configureColors?%5B%22punctuation%22%5D) to choose from a spectrum. Changes apply immediately. Use **Inherit** in the picker to remove an override; clearing the field explicitly selects the editor theme.",
 					"order": 18,
 					"pattern": "^$|^#[0-9a-fA-F]{6}$|^custom$",
 					"patternErrorMessage": "Use #RRGGBB, or leave empty for System Default."
