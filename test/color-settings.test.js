@@ -1,7 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createColorSettings, getColors, COMMAND, CATEGORIES } = require('../lib/color-settings');
-const { TOKEN_CATEGORIES } = require('../lib/tokenizer');
+const { createColorSettings, getColors, COMMAND, EDIT_COMMAND, CATEGORIES } = require('../lib/color-settings');
 const { Uri } = require('./helpers/editor');
 
 function signal() {
@@ -10,14 +9,14 @@ function signal() {
     fire(value) { for (const callback of [...listeners]) callback(value); }, get size() { return listeners.size; } };
 }
 
-function setup(t, active = false, storage) {
-  const configuration = signal(), folders = signal(), editors = signal();
-  const commands = new Map(), panels = [], writes = [], errors = [], values = new Map();
+function setup(t, active = false) {
+  const configuration = signal(), editors = signal();
+  const commands = new Map(), panels = [], writes = [], errors = [], values = new Map(), calls = [];
   let updateHook;
   const folder = { name: 'Site', uri: Uri.file('/site') };
   const config = (uri) => ({
     inspect(key) {
-      return { defaultValue: key === 'skin' ? 'auto' : key.endsWith('Colors') ? {} : '', globalValue: values.get(`1:${key}`),
+      return { defaultValue: ['skin', 'theme'].includes(key) ? 'auto' : key.endsWith('Colors') || key === 'customTheme' ? {} : '', globalValue: values.get(`1:${key}`),
         workspaceValue: values.get(`2:${key}`), workspaceFolderValue: values.get(`3:${uri?.toString()}:${key}`) };
     },
     get(key, fallback) {
@@ -34,10 +33,9 @@ function setup(t, active = false, storage) {
   });
   const vscode = {
     Uri, ViewColumn: { One: 1, Beside: -2 }, ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
-    commands: { registerCommand(id, callback) { commands.set(id, callback); return { dispose() { commands.delete(id); } }; } },
+    commands: { async executeCommand(...args) { calls.push(args); }, registerCommand(id, callback) { commands.set(id, callback); return { dispose() { commands.delete(id); } }; } },
     workspace: { workspaceFolders: [folder], getWorkspaceFolder(uri) { return uri.path.startsWith('/site/') ? folder : undefined; },
-      getConfiguration: (_section, uri) => config(uri), onDidChangeConfiguration: configuration.subscribe,
-      onDidChangeWorkspaceFolders: folders.subscribe },
+      getConfiguration: (_section, uri) => config(uri), onDidChangeConfiguration: configuration.subscribe },
     window: { activeTextEditor: active ? { document: { uri: Uri.file('/site/setup.typoscript'), languageId: 'typoscript-v12' } } : undefined,
       onDidChangeActiveTextEditor: editors.subscribe,
       createWebviewPanel(type, title, column, options) {
@@ -52,236 +50,211 @@ function setup(t, active = false, storage) {
         return panel;
       } }
   };
-  const picker = createColorSettings(vscode, Uri.file('/extension'), (error) => errors.push(error), storage);
+  const picker = createColorSettings(vscode, Uri.file('/extension'), (error) => errors.push(error));
   t.after(() => picker.dispose());
-  const open = (category) => { commands.get(COMMAND)(category); panels.at(-1).received.fire({ type: 'ready' }); return panels.at(-1); };
-  const color = (panel, category, value, id = 1) => panel.received.fire({ type: 'color', category, color: value, id });
-  return { vscode, picker, commands, panels, writes, values, errors, open, color, configuration, folders, editors,
+  const open = (category) => { commands.get(EDIT_COMMAND)(category); panels.at(-1).received.fire({ type: 'ready' }); return panels.at(-1); };
+  return { vscode, picker, commands, panels, writes, values, errors, open, configuration, editors, calls,
     hook(callback) { updateHook = callback; } };
 }
 
-test('picker reads each scope with inheritance, legacy compatibility and explicit theme reset', (t) => {
-  const { vscode, values } = setup(t);
-  assert.deepEqual(CATEGORIES.map(([category]) => category), Object.keys(TOKEN_CATEGORIES));
-  values.set('1:colors.comments', '#abcdef');
-  values.set('2:colors.comments', '#123456');
-  values.set('3:file:///site:colors.comments', '');
-  values.set('1:colors.values', 'custom');
-  values.set('1:customColors', { values: '#abcdef' });
-  values.set('2:customColors', { comments: '#000000' });
-  const read = (id) => Object.fromEntries(getColors(vscode, { id, uri: Uri.file('/site') }).map((entry) => [entry.category, entry.color]));
-  assert.equal(read('user').comments, '#ABCDEF');
-  assert.equal(read('workspace').comments, '#123456');
-  assert.equal(read('folder:file:///site').comments, '');
-  assert.equal(read('folder:file:///site').values, '#ABCDEF');
-  values.set('3:file:///site:colors.values', '#654321');
-  assert.equal(read('folder:file:///site').values, '#654321');
+const draft = () => Object.fromEntries(CATEGORIES.map(([category], index) => [category, `#AABB0${index}`]));
+const save = (panel, colors = draft(), id = 1) => panel.received.fire({ type: 'save', colors, id });
+
+test('Theme Settings opens the visual editor directly without opening native Settings', async (t) => {
+  const { commands, calls, panels, writes } = setup(t);
+  await commands.get(COMMAND)();
+  assert.deepEqual(calls, []);
+  assert.equal(panels.length, 1);
+  assert.ok(panels[0].webview.html.includes('id="theme"'));
+  assert.equal(writes.length, 0);
 });
 
-test('command opens a local spectrum view without saving settings and reuses the panel', (t) => {
-  const { open, panels, writes } = setup(t);
+test('the extension menu context cannot be mistaken for a color category', async (t) => {
+  const { commands, panels } = setup(t);
+  await commands.get(COMMAND)({ identifier: { id: 'stefan-sofka.typoscript-highlighting' } });
+  panels[0].received.fire({ type: 'ready' });
+  assert.equal(panels[0].messages.at(-1).category, undefined);
+});
+
+test('custom editor opens nine colors without writing settings and reuses its panel', (t) => {
+  const { open, writes, panels } = setup(t);
   const panel = open('values');
   assert.equal(panel.messages.at(-1).colors.length, 9);
+  assert.equal(panel.messages.at(-1).location, 'User settings');
   assert.equal(panel.messages.at(-1).category, 'values');
-  assert.equal(panel.messages.at(-1).targetId, 'user');
-  assert.equal(panel.messages.at(-1).skin.selected, 'auto');
-  assert.ok(panel.messages.at(-1).colors.every((entry) => /^#[0-9A-F]{6}$/.test(entry.color)));
-  assert.deepEqual(panel.options.localResourceRoots.map((uri) => uri.path), ['/extension/media']);
+  assert.ok(panel.messages.at(-1).colors.every(({ color }) => /^#[0-9A-F]{6}$/.test(color)));
   assert.ok(panel.webview.html.includes("default-src 'none'"));
-  assert.ok(panel.webview.html.includes('color-settings.js'));
-  assert.ok(panel.webview.html.includes('id="spectrum"'));
+  assert.ok(panel.webview.html.includes('id="save"'));
+  assert.ok(panel.webview.html.includes('id="theme"'));
+  assert.deepEqual(panel.messages.at(-1).themes.map(({ id }) => id), ['auto', 'dark', 'light', 'nord', 'monokai', 'solarized', 'custom']);
+  for (const id of ['scope', 'palette', 'skin', 'inherit-all', 'undo', 'spectrum']) assert.ok(!panel.webview.html.includes(`id="${id}"`));
   open('comments');
   assert.equal(panels.length, 1);
   assert.equal(panel.messages.at(-1).category, 'comments');
   assert.equal(writes.length, 0);
 });
 
-test('picker follows the active project and serializes writes across captured scopes', async (t) => {
-  const { open, color, picker, writes, hook } = setup(t, true);
+test('saving a complete custom theme writes one palette, then selects Custom', async (t) => {
+  const { open, picker, writes, values } = setup(t);
   const panel = open();
-  assert.equal(panel.messages.at(-1).targetId, 'user', 'personal colors initially belong in User settings');
-  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
-  assert.equal(panel.messages.at(-1).targetId, 'folder:file:///site');
-  let release;
-  let calls = 0;
-  const blocked = new Promise((resolve) => { release = resolve; });
-  hook(async () => { calls++; if (calls === 1) await blocked; });
-  color(panel, 'comments', '#abcdef');
-  await Promise.resolve();
-  color(panel, 'values', '#123456', 2);
-  panel.received.fire({ type: 'target', targetId: 'user' });
-  color(panel, 'operators', '#654321', 3);
-  assert.equal(calls, 1, 'only one settings write may run at a time');
-  release();
+  save(panel, Object.fromEntries(Object.entries(draft()).map(([key, value]) => [key, value.toLowerCase()])));
   await picker.whenIdle();
-  assert.deepEqual(writes.map(({ key, value, target }) => [key, value, target]), [
-    ['colors.comments', '#ABCDEF', 3], ['colors.values', '#123456', 3], ['colors.operators', '#654321', 1]
-  ]);
-  assert.ok(writes.slice(0, 2).every(({ uri }) => uri.path === '/site'));
-  assert.equal(writes[2].uri, undefined);
+  assert.equal(writes.length, 2);
+  assert.ok(writes.every(({ target }) => target === 1));
+  assert.deepEqual(writes.at(-1), { key: 'theme', value: 'custom', target: 1, uri: undefined });
+  assert.deepEqual(values.get('1:customTheme'), { colors: draft() });
+  assert.ok(panel.messages.some(({ type }) => type === 'saved'));
 });
 
-test('System Default saves an explicit empty value to mask inherited overrides', async (t) => {
-  const { open, color, picker, values, writes } = setup(t, true);
-  values.set('1:colors.comments', '#FF0000');
+test('saved custom colors remain available when another preset is selected', (t) => {
+  const { values, open } = setup(t);
+  values.set('1:theme', 'nord');
+  values.set('1:colors.comments', '#123456');
   const panel = open();
-  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
-  assert.equal(panel.messages.at(-1).colors[0].color, '#FF0000');
-  color(panel, 'comments', '');
-  await picker.whenIdle();
-  assert.equal(writes[0].value, '');
-  assert.equal(panel.messages.at(-1).colors[0].color, '');
+  assert.equal(panel.messages.at(-1).colors.find(({ category }) => category === 'comments').color, '#123456');
+  assert.equal(panel.messages.at(-1).colors.find(({ category }) => category === 'values').color, '#EBCB8B');
+  assert.equal(panel.messages.at(-1).themes.find(({ id }) => id === 'nord').colors.comments, '#A3BE8C');
 });
 
-test('invalid messages and unknown targets cannot write configuration', async (t) => {
-  const { open, picker, writes } = setup(t);
+test('the dropdown applies all five presets by changing only Theme and retaining custom colors', async (t) => {
+  const { values, open, picker, writes } = setup(t);
+  values.set('1:colors.comments', '#123456');
   const panel = open();
-  for (const message of [null, {}, { type: 'color', category: 'comments', color: '#123', id: 1 },
-    { type: 'skin', skin: 'unknown', id: 1 }, { type: 'skin', skin: 'constructor', id: 1 }, { type: 'skin', skin: 'dark', id: '1' },
-    { type: 'color', category: 'constructor', color: '#123456', id: 1 },
-    { type: 'color', category: 'comments', color: null, id: 1 },
-    { type: 'color', category: 'comments', color: '#123456', id: '1' },
-    { type: 'target', targetId: 'folder:file:///unrelated' }]) panel.received.fire(message);
+  for (const [index, theme] of ['dark', 'light', 'nord', 'monokai', 'solarized'].entries()) {
+    panel.received.fire({ type: 'theme', theme, id: index + 1 });
+    await picker.whenIdle();
+    assert.equal(values.get('1:theme'), theme);
+    assert.equal(panel.messages.at(-1).theme, theme);
+  }
+  assert.equal(writes.length, 5);
+  assert.ok(writes.every(({ key }) => key === 'theme'));
+  assert.equal(values.get('1:colors.comments'), '#123456');
+});
+
+test('invalid dropdown choices cannot change settings and a failed choice reports the previous theme', async (t) => {
+  const { values, open, picker, writes, hook } = setup(t);
+  values.set('1:theme', 'nord');
+  const panel = open();
+  for (const theme of ['unknown', 'constructor', 'custom', null]) panel.received.fire({ type: 'theme', theme, id: 1 });
+  panel.received.fire({ type: 'theme', theme: 'dark', id: '1' });
   await picker.whenIdle();
   assert.equal(writes.length, 0);
-  assert.equal(panel.messages.at(-1).targetId, 'user');
+  hook(async () => { throw new Error('Read only'); });
+  panel.received.fire({ type: 'theme', theme: 'dark', id: 2 });
+  await picker.whenIdle();
+  assert.ok(panel.messages.some(({ type, operation }) => type === 'error' && operation === 'theme'));
+  assert.equal(panel.messages.at(-1).theme, 'nord');
 });
 
-test('renderer disposal races consume rejected posts while unrelated delivery failures are reported', async (t) => {
-  const { open, configuration, picker, errors, color, writes } = setup(t);
+test('a preset requested after a pending custom save is applied last', async (t) => {
+  const { open, picker, values, hook } = setup(t);
   const panel = open();
-  panel.webview.postMessage = async () => { throw new Error('Unknown webview handle:closed-renderer'); };
-  configuration.fire({ affectsConfiguration: () => true });
-  color(panel, 'comments', '#123456'); await picker.whenIdle();
-  assert.equal(writes.at(-1).value, '#123456'); assert.deepEqual(errors, []);
-  panel.webview.postMessage = async () => { throw new Error('Delivery failed'); };
-  configuration.fire({ affectsConfiguration: () => true });
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(errors.at(-1).message, 'Delivery failed');
+  let release;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  let first = true;
+  hook(async () => { if (first) { first = false; await blocked; } });
+  save(panel);
+  await Promise.resolve();
+  panel.received.fire({ type: 'theme', theme: 'monokai', id: 2 });
+  release(); await picker.whenIdle();
+  assert.equal(values.get('1:theme'), 'monokai');
+  assert.equal(values.get('1:customTheme').colors.comments, draft().comments);
 });
 
-test('external edits and removed folders refresh the view; closing releases listeners', (t) => {
-  const { open, values, configuration, folders, vscode, commands, picker } = setup(t, true);
+test('an existing project theme is edited in that project without touching personal colors', async (t) => {
+  const { values, open, picker, writes } = setup(t, true);
+  values.set('3:file:///site/setup.typoscript:theme', 'nord');
+  values.set('1:colors.comments', '#112233');
   const panel = open();
-  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
-  values.set('3:file:///site:colors.comments', '#123456');
+  assert.equal(panel.messages.at(-1).location, 'Project: Site');
+  save(panel);
+  await picker.whenIdle();
+  assert.ok(writes.every(({ target, uri }) => target === 3 && uri.path === '/site/setup.typoscript'));
+  assert.equal(values.get('1:colors.comments'), '#112233');
+});
+
+test('migrated project palettes keep theme edits at their original project scope', async (t) => {
+  for (const key of ['darkColors', 'lightColors', 'customColors']) {
+    const { values, open, picker, writes } = setup(t, true);
+    const legacy = { [key]: { comments: '#123456' } };
+    values.set('3:file:///site/setup.typoscript:customTheme', { legacy });
+    const panel = open();
+    assert.equal(panel.messages.at(-1).location, 'Project: Site', key);
+    assert.equal(writes.length, 0);
+    save(panel);
+    await picker.whenIdle();
+    assert.ok(writes.every(({ target }) => target === 3), key);
+    assert.deepEqual(values.get('3:file:///site/setup.typoscript:customTheme'), { legacy, colors: draft() });
+  }
+});
+
+test('workspace palettes and unmigrated folder colors retain their save destination', async (t) => {
+  const workspace = setup(t, true);
+  workspace.values.set('2:customTheme', { colors: { comments: '#123456' } });
+  const workspacePanel = workspace.open();
+  assert.equal(workspacePanel.messages.at(-1).location, 'Workspace settings');
+  save(workspacePanel);
+  await workspace.picker.whenIdle();
+  assert.ok(workspace.writes.every(({ target }) => target === 2));
+
+  const folder = setup(t, true);
+  folder.values.set('3:file:///site/setup.typoscript:colors.comments', '#123456');
+  const folderPanel = folder.open();
+  assert.equal(folderPanel.messages.at(-1).location, 'Project: Site');
+  save(folderPanel);
+  await folder.picker.whenIdle();
+  assert.ok(folder.writes.every(({ target }) => target === 3));
+});
+
+test('invalid, partial or unknown color messages cannot change settings', async (t) => {
+  const { open, picker, writes } = setup(t);
+  const panel = open();
+  for (const message of [null, {}, { type: 'save', colors: draft(), id: '1' },
+    { type: 'save', colors: { comments: '#123456' }, id: 1 },
+    { type: 'save', colors: { ...draft(), comments: '#ABC' }, id: 1 },
+    { type: 'save', colors: { ...draft(), values: null }, id: 1 },
+    { type: 'save', colors: { ...draft(), constructor: '#123456' }, id: 1 },
+    { type: 'color', category: 'comments', color: '#123456', id: 1 }]) panel.received.fire(message);
+  await picker.whenIdle();
+  assert.equal(writes.length, 0);
+});
+
+test('save failures are reported, keep the preset selected, and permit retry', async (t) => {
+  const { open, picker, hook, errors, values } = setup(t);
+  values.set('1:theme', 'nord');
+  const panel = open();
+  hook(async () => { throw new Error('Read only'); });
+  save(panel);
+  await picker.whenIdle();
+  assert.equal(errors.length, 1);
+  assert.equal(values.get('1:theme'), 'nord');
+  assert.ok(panel.messages.some(({ type }) => type === 'error'));
+  hook(undefined); save(panel, draft(), 2);
+  await picker.whenIdle();
+  assert.equal(values.get('1:theme'), 'custom');
+});
+
+test('closing the editor consumes late posts while the requested save finishes', async (t) => {
+  const { open, picker, writes } = setup(t);
+  const panel = open();
+  save(panel); panel.dispose();
+  const count = panel.messages.length;
+  await picker.whenIdle();
+  assert.equal(writes.length, 2);
+  assert.equal(panel.messages.length, count);
+  assert.equal(panel.received.size, 0);
+});
+
+test('external configuration refreshes the custom editor and disposal releases listeners', async (t) => {
+  const { open, values, configuration, picker, commands } = setup(t);
+  const panel = open();
+  values.set('1:colors.comments', '#123456');
   configuration.fire({ affectsConfiguration: () => true });
   assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
-  vscode.workspace.workspaceFolders = [];
-  folders.fire();
-  assert.equal(panel.messages.at(-1).targetId, 'user');
-  panel.dispose();
-  assert.equal(panel.received.size, 0);
-  open();
+  panel.webview.postMessage = async () => { throw new Error('Unknown webview handle:closed'); };
+  configuration.fire({ affectsConfiguration: () => true });
+  await picker.whenIdle();
   picker.dispose();
   assert.equal(commands.size, 0);
   assert.equal(configuration.size, 0);
-  assert.equal(folders.size, 0);
-});
-
-test('save failures are reported and later writes still complete after a panel closes', async (t) => {
-  const { open, color, picker, errors, writes, hook } = setup(t);
-  const panel = open();
-  let failed = false;
-  hook(async () => { if (!failed) { failed = true; throw new Error('Read only'); } });
-  color(panel, 'comments', '#123456');
-  await picker.whenIdle();
-  assert.equal(errors.length, 1);
-  assert.ok(panel.messages.some((message) => message.type === 'error'));
-  color(panel, 'comments', '#654321', 2);
-  panel.dispose();
-  const count = panel.messages.length;
-  await picker.whenIdle();
-  assert.equal(writes.length, 1);
-  assert.equal(writes[0].value, '#654321');
-  assert.equal(panel.messages.length, count);
-});
-
-test('inherit, explicit theme and undo preserve exact local scope values', async (t) => {
-  const { open, color, picker, values } = setup(t, true);
-  values.set('1:colors.comments', '#112233');
-  const panel = open();
-  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
-  assert.equal(panel.messages.at(-1).colors[0].mode, 'inherit');
-  color(panel, 'comments', '');
-  await picker.whenIdle();
-  assert.equal(panel.messages.at(-1).colors[0].mode, 'theme');
-  panel.received.fire({ type: 'inherit', category: 'comments', id: 2 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:colors.comments'), undefined);
-  assert.equal(panel.messages.at(-1).colors[0].color, '#112233');
-  panel.received.fire({ type: 'undo', id: 3 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:colors.comments'), '');
-});
-
-test('theme palettes inherit base colors, preserve sibling colors and support bulk undo', async (t) => {
-  const { open, color, picker, values } = setup(t);
-  values.set('1:colors.comments', '#123456');
-  values.set('1:darkColors', { values: '#654321' });
-  const panel = open();
-  panel.received.fire({ type: 'palette', palette: 'dark' });
-  assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
-  assert.equal(panel.messages.at(-1).colors[0].source, 'Base palette · User');
-  color(panel, 'comments', '#abcdef');
-  await picker.whenIdle();
-  assert.deepEqual(values.get('1:darkColors'), { values: '#654321', comments: '#ABCDEF' });
-  panel.received.fire({ type: 'bulk', action: 'inherit', id: 2 });
-  await picker.whenIdle();
-  assert.equal(values.get('1:darkColors'), undefined);
-  panel.received.fire({ type: 'undo', id: 3 });
-  await picker.whenIdle();
-  assert.deepEqual(values.get('1:darkColors'), { values: '#654321', comments: '#ABCDEF' });
-});
-
-test('picker remembers scope and palette but starts with User on first use', (t) => {
-  const memory = new Map([['colorTarget', 'workspace'], ['colorPalette', 'light']]);
-  const storage = { get: (key, fallback) => memory.get(key) ?? fallback, update: async (key, value) => { memory.set(key, value); } };
-  const { open } = setup(t, true, storage);
-  const panel = open();
-  assert.equal(panel.messages.at(-1).targetId, 'workspace');
-  assert.equal(panel.messages.at(-1).palette, 'light');
-  panel.received.fire({ type: 'target', targetId: 'user' });
-  assert.equal(memory.get('colorTarget'), 'user');
-});
-
-test('skin selection preserves custom colors and supports inheritance and exact undo', async (t) => {
-  const { open, picker, values, writes } = setup(t, true);
-  values.set('1:skin', 'nord');
-  values.set('1:colors.comments', '#123456');
-  const panel = open();
-  panel.received.fire({ type: 'target', targetId: 'folder:file:///site' });
-  assert.equal(panel.messages.at(-1).skin.inherited, true);
-  panel.received.fire({ type: 'skin', skin: 'monokai', id: 1 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:skin'), 'monokai');
-  assert.equal(panel.messages.at(-1).colors[0].color, '#123456');
-  assert.equal(panel.messages.at(-1).skin.inherited, false);
-  assert.deepEqual(writes.map(({ key }) => key), ['skin']);
-  panel.received.fire({ type: 'skin', skin: 'inherit', id: 2 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:skin'), undefined);
-  assert.equal(panel.messages.at(-1).skin.selected, 'nord');
-  panel.received.fire({ type: 'undo', id: 3 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:skin'), 'monokai');
-  panel.received.fire({ type: 'undo', id: 4 });
-  await picker.whenIdle();
-  assert.equal(values.get('3:file:///site:skin'), undefined);
-});
-
-test('queued skin selections retain the selected scope and failed saves do not create undo entries', async (t) => {
-  const { open, picker, writes, hook, errors } = setup(t, true);
-  const panel = open();
-  hook(async () => { throw new Error('Read only'); });
-  panel.received.fire({ type: 'skin', skin: 'dark', id: 1 });
-  await picker.whenIdle();
-  assert.equal(errors.length, 1);
-  assert.equal(panel.messages.at(-1).canUndo, false);
-  hook(undefined);
-  panel.received.fire({ type: 'skin', skin: 'nord', id: 2 });
-  panel.received.fire({ type: 'target', targetId: 'workspace' });
-  panel.received.fire({ type: 'skin', skin: 'solarized', id: 3 });
-  await picker.whenIdle();
-  assert.deepEqual(writes.map(({ key, value, target }) => [key, value, target]), [['skin', 'nord', 1], ['skin', 'solarized', 2]]);
 });

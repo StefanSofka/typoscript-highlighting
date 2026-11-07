@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const vscode = require('vscode');
+const { getSettings } = require('../../lib/settings');
 
 async function waitFor(description, predicate) {
   const deadline = Date.now() + 15000;
@@ -39,6 +40,7 @@ async function waitForComposerWatcher(directory) {
 async function run() {
   const root = process.env.TYPOSCRIPT_TEST_DIRECTORY;
   assert.ok(root, 'The integration runner must provide an isolated test directory');
+  await require('./settings-migration').verify();
   const oldProject = path.join(root, 'v11');
   const newProject = path.join(root, 'v13');
   const v12Project = path.join(root, 'v12');
@@ -77,7 +79,7 @@ async function run() {
   await waitFor('Composer watcher update', () => document(oldUri)?.languageId === 'typoscript-v12');
   console.log('PASS: real filesystem watcher updates open documents');
 
-  const config = vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri);
+  const config = getSettings(vscode, oldUri);
   await config.update('commentRules', 'v11', vscode.ConfigurationTarget.WorkspaceFolder);
   await waitFor('folder setting', () => document(oldUri)?.languageId === 'typoscript-v11');
   assert.ok(modernUris.every((uri) => document(uri).languageId === 'typoscript-v12'));
@@ -86,7 +88,7 @@ async function run() {
   console.log('PASS: real resource-scoped configuration changes');
 
   for (const [major, uri] of [[13, newUri], [14, v14Uri]]) {
-    const modernConfig = vscode.workspace.getConfiguration('typoscriptHighlighting', uri);
+    const modernConfig = getSettings(vscode, uri);
     await modernConfig.update('commentRules', 'v11', vscode.ConfigurationTarget.WorkspaceFolder);
     await waitFor(`TYPO3 ${major} forced legacy rules`, () => document(uri)?.languageId === 'typoscript-v11');
     assert.ok(modernUris.filter((other) => other !== uri).every((other) => document(other).languageId === 'typoscript-v12'));
@@ -114,7 +116,7 @@ async function run() {
   assert.equal(editor.document.lineAt(0).text, 'page = PAGE');
   console.log('PASS: registered language configuration supports comment toggling');
 
-  const colorSetting = vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri);
+  const colorSetting = getSettings(vscode, oldUri);
   assert.equal(colorSetting.get('skin'), 'auto', 'Automatic skin must work immediately after installation');
   const nativeColors = vscode.workspace.getConfiguration('editor').inspect('tokenColorCustomizations');
   for (const category of ['comments', 'objectPaths', 'values', 'operators', 'constants', 'conditions', 'imports', 'functions', 'punctuation']) {
@@ -124,10 +126,10 @@ async function run() {
   await colorSetting.update('colors.values', 'custom', vscode.ConfigurationTarget.WorkspaceFolder);
   await colorSetting.update('customColors', { values: '#AB1234' }, vscode.ConfigurationTarget.WorkspaceFolder);
   await controller.whenIdle();
-  assert.equal(vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri).get('colors.comments'), '#12AB34');
-  assert.equal(vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri).get('colors.values'), 'custom');
-  assert.deepEqual(vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri).get('customColors'), { values: '#AB1234' });
-  assert.equal(vscode.workspace.getConfiguration('typoscriptHighlighting', v14Uri).get('colors.comments'), '');
+  assert.equal(getSettings(vscode, oldUri).get('colors.comments'), '#12AB34');
+  assert.equal(getSettings(vscode, oldUri).get('colors.values'), 'custom');
+  assert.deepEqual(getSettings(vscode, oldUri).get('customColors'), { values: '#AB1234' });
+  assert.equal(getSettings(vscode, v14Uri).get('colors.comments'), '');
   await vscode.languages.setTextDocumentLanguage(editor.document, 'typoscript-v11');
   await controller.whenIdle();
   await vscode.languages.setTextDocumentLanguage(editor.document, 'typoscript');
@@ -140,15 +142,17 @@ async function run() {
     'Custom colors must not rewrite native token color settings');
   console.log('PASS: direct hex/legacy custom colors, resource settings, language changes, and System Default reset');
   const originalColors = Object.fromEntries(['comments', 'objectPaths', 'values', 'operators', 'constants', 'conditions', 'imports', 'functions', 'punctuation']
-    .map((category) => [category, vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri).inspect(`colors.${category}`)]));
+    .map((category) => [category, getSettings(vscode, oldUri).inspect(`colors.${category}`)]));
   await vscode.commands.executeCommand('typoscriptHighlighting.configureColors', 'values');
   await vscode.commands.executeCommand('typoscriptHighlighting.configureColors', 'comments');
+  await vscode.commands.executeCommand('typoscriptHighlighting.editCustomTheme', 'values');
+  await vscode.commands.executeCommand('typoscriptHighlighting.editCustomTheme', 'comments');
   await controller.whenIdle();
   for (const [category, original] of Object.entries(originalColors)) {
-    assert.deepEqual(vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri).inspect(`colors.${category}`), original,
+    assert.deepEqual(getSettings(vscode, oldUri).inspect(`colors.${category}`), original,
       'Opening the spectrum view must not save a color');
   }
-  console.log('PASS: registered spectrum command opens and reuses its view without changing settings');
+  console.log('PASS: visual Theme Settings and the compatibility alias open without changing colors');
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   await require('./features').run(controller);
   await require('./installation').run(controller);

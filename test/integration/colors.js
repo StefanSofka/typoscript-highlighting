@@ -2,8 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const vscode = require('vscode');
+const { getSettings } = require('../../lib/settings');
 const { PALETTE, fixture, checks } = require('./color-fixture');
-const DARK_PALETTE = { comments: '#7FB069', objectPaths: '#82AAFF', values: '#EBCB8B', operators: '#C099FF', constants: '#C4A7E7', conditions: '#E899C0', imports: '#78C7BD', functions: '#D8AA72', punctuation: '#B7C3D0' };
 // Independent expected foregrounds for the bundled skins.
 const SKIN_COLORS = {
   dark: { comments: '#7FA870', objectPaths: '#9CDCFE', values: '#CE9178', operators: '#C586C0', constants: '#4FC1FF', conditions: '#DCDCAA', imports: '#D7BA7D', functions: '#B5CEA8', punctuation: '#D4D4D4' },
@@ -15,6 +15,7 @@ const SKIN_COLORS = {
 
 async function run() {
   const root = process.env.TYPOSCRIPT_TEST_DIRECTORY;
+  await require('./settings-migration').verify();
   const stateFile = path.join(root, 'color-state.json');
   const ackFile = path.join(root, 'color-ack.json');
   let sequence = 0;
@@ -56,7 +57,14 @@ async function run() {
     }
     throw new Error(`Color probe timed out: ${name}`);
   }
-  const config = (major) => vscode.workspace.getConfiguration('typoscriptHighlighting', uris.get(major));
+  const config = (major) => getSettings(vscode, uris.get(major));
+  async function savedSetting(key, expected) {
+    const deadline = Date.now() + 10000;
+    while (getSettings(vscode).get(key) !== expected && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.equal(getSettings(vscode).get(key), expected, `native Settings persisted ${key}`);
+  }
   async function palette(major, colors, target = vscode.ConfigurationTarget.WorkspaceFolder) {
     for (const category of Object.keys(PALETTE)) await config(major).update(`colors.${category}`, colors[category], target);
   }
@@ -89,7 +97,7 @@ async function run() {
   api = await vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting').activate();
   for (const property of ['globalValue', 'workspaceValue', 'workspaceFolderValue']) assert.equal(config(11).inspect('skin')[property], undefined);
   await stage('fresh installation automatically uses Dark skin', rendered(11, SKIN_COLORS.dark));
-  await vscode.workspace.getConfiguration('typoscriptHighlighting').update('skin', 'editor', vscode.ConfigurationTarget.Global);
+  await getSettings(vscode).update('skin', 'editor', vscode.ConfigurationTarget.Global);
   for (const major of [11, 12, 13, 14]) {
     const editor = await show(major);
     await api.whenIdle();
@@ -170,76 +178,100 @@ async function run() {
   await vscode.commands.executeCommand('workbench.action.joinAllGroups');
   await vscode.commands.executeCommand('workbench.action.closeSidebar');
   await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
-  await vscode.commands.executeCommand('typoscriptHighlighting.configureColors', 'comments');
-  await stage('picker UI enters all nine hex colors and adjusts the spectrum', { ...rendered(14), action: 'picker', baselineKey: 'dark-14',
-    folderId: `folder:${vscode.workspace.getWorkspaceFolder(uris.get(14)).uri.toString()}`, screenshot: 'individual-colors.png' });
-  assert.equal(config(14).get('colors.comments'), '#BF3030');
-  for (const [category, color] of Object.entries(PALETTE)) if (category !== 'comments') assert.equal(config(14).get(`colors.${category}`), color);
-  await stage('picker UI resets all nine categories to System Default', { major: 14, action: 'picker-reset', restore: 'dark-14' });
-  for (const category of Object.keys(PALETTE)) assert.equal(config(14).inspect(`colors.${category}`).workspaceFolderValue, '');
-  await stage('picker UI saves colors at User, Workspace and Folder scopes', {
-    ...rendered(14, { comments: '#CC0066' }), action: 'picker-scopes', folderId: `folder:${vscode.workspace.getWorkspaceFolder(uris.get(14)).uri.toString()}`
-  });
-  const scoped = config(14).inspect('colors.comments');
-  assert.equal(scoped.globalValue, '#112233');
-  assert.equal(scoped.workspaceValue, '#332211');
-  assert.equal(scoped.workspaceFolderValue, '#CC0066');
-  await comment(14, undefined, vscode.ConfigurationTarget.Global);
-  await comment(14, undefined, vscode.ConfigurationTarget.Workspace);
-  await comment(14, undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-  await stage('scope picker cleanup restores the theme', { major: 14, restore: 'dark-14' });
+  const userConfig = () => getSettings(vscode);
+  await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:stefan-sofka.typoscript-highlighting');
+  await stage('native Settings exposes Theme selection', { action: 'settings-theme', theme: 'nord', screenshot: 'theme-settings.png', editorScreenshot: true });
+  await savedSetting('theme', 'nord');
+  await show(14);
+  await stage('preset selected in native Settings colors all categories', rendered(14, SKIN_COLORS.nord));
   await comment(14, '#112233', vscode.ConfigurationTarget.Global);
-  await comment(14, '#445566', vscode.ConfigurationTarget.Workspace);
-  await comment(14, '#778899', vscode.ConfigurationTarget.WorkspaceFolder);
-  await stage('picker inheritance removes only the folder override', { ...rendered(14, { comments: '#445566' }), action: 'picker-inherit' });
-  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, undefined);
-  await stage('picker explicit theme masks inherited color', { major: 14, restore: 'dark-14', onlyLine: 0, action: 'picker-theme' });
-  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, '');
-  await stage('picker undo restores inheritance', { ...rendered(14, { comments: '#445566' }), action: 'picker-undo' });
-  assert.equal(config(14).inspect('colors.comments').workspaceFolderValue, undefined);
-  await stage('picker bulk theme reset restores all categories', { major: 14, restore: 'dark-14', action: 'picker-bulk-theme' });
-  await stage('picker bulk undo restores prior scope values', { ...rendered(14, { comments: '#445566' }), action: 'picker-undo' });
-  await stage('picker bulk inheritance preserves workspace colors', { ...rendered(14, { comments: '#445566' }), action: 'picker-bulk-inherit' });
-  for (const category of Object.keys(PALETTE)) assert.equal(config(14).inspect(`colors.${category}`).workspaceFolderValue, undefined);
-  await comment(14, undefined, vscode.ConfigurationTarget.Global);
-  await comment(14, undefined, vscode.ConfigurationTarget.Workspace);
-  await stage('picker dark palette applies without changing base colors', { ...rendered(14, DARK_PALETTE), action: 'picker-palette', palette: 'dark', paletteColors: DARK_PALETTE, screenshot: 'color-picker-dark.png', maximize: true });
-  assert.deepEqual(config(14).get('darkColors'), DARK_PALETTE);
-  assert.equal(config(14).get('colors.comments'), '');
-  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
-  const lightPalette = { comments: '#467240', objectPaths: '#174EA6', values: '#91331D', operators: '#7B287D', constants: '#6F3BA0', conditions: '#8B3A62', imports: '#176861', functions: '#775515', punctuation: '#525252' };
-  await stage('picker light palette is independent of dark colors', { ...rendered(14, lightPalette), action: 'picker-palette', palette: 'light', paletteColors: lightPalette, screenshot: 'color-picker-light.png', maximize: true });
-  assert.deepEqual(config(14).get('lightColors'), lightPalette);
-  assert.deepEqual(config(14).get('darkColors'), DARK_PALETTE);
-  await stage('picker light palette bulk inheritance restores theme', { major: 14, restore: 'light-14', action: 'picker-bulk-inherit' });
-  await config(14).update('darkColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-  await config(14).update('lightColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
-
-  // Exercise skin changes and the real selector after the legacy color checks.
-  for (const [skin, colors] of Object.entries(SKIN_COLORS)) {
-    await config(14).update('skin', skin, vscode.ConfigurationTarget.WorkspaceFolder);
-    await stage(`${skin} skin renders all nine categories`, rendered(14, colors));
+  for (const [theme, colors] of Object.entries(SKIN_COLORS)) {
+    await userConfig().update('theme', theme, vscode.ConfigurationTarget.Global);
+    await stage(`${theme} preset ignores stored custom colors`, rendered(14, colors));
   }
-  await config(14).update('skin', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-  await vscode.workspace.getConfiguration('typoscriptHighlighting').update('skin', undefined, vscode.ConfigurationTarget.Global);
-  await stage('removing skin overrides restores automatic Dark', rendered(14, SKIN_COLORS.dark));
+  assert.equal(userConfig().get('colors.comments'), '#112233');
+  await comment(14, undefined, vscode.ConfigurationTarget.Global);
+  await userConfig().update('theme', 'nord', vscode.ConfigurationTarget.Global);
+  await vscode.commands.executeCommand('_extensions.manage', 'stefan-sofka.typoscript-highlighting');
+  if (process.env.TYPOSCRIPT_VERIFY_PREVIEW_README) {
+    const extension = vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting');
+    const readme = await fs.readFile(path.join(extension.extensionPath, 'readme.md'), 'utf8');
+    const expectedImages = [...readme.matchAll(/!\[[^\]]*\]\(https:\/\/raw\.githubusercontent\.com\//g)].length;
+    assert.ok(expectedImages >= 9, 'load a pinned-image release or preview VSIX for README verification');
+    await stage('all README screenshots load in extension Details', {
+      action: 'extension-readme', expectedImages, screenshot: 'readme-preview.png', editorScreenshot: true
+    });
+  }
+  await stage('the extension menu opens visual Theme Settings directly', {
+    action: 'extension-theme-menu', menuScreenshot: 'theme-settings-menu.png', screenshot: 'theme-settings-entry.png'
+  });
+  await stage('Theme Settings starts with nine colors and one Save button', { action: 'custom-open', screenshot: 'custom-theme.png' });
+  await stage('custom editor has only nine colors and Save; drafts do not change settings', {
+    action: 'custom-draft', paletteColors: PALETTE
+  });
+  assert.equal(userConfig().get('theme'), 'nord');
+  assert.equal(userConfig().inspect('colors.comments').globalValue, undefined);
+  for (const [theme, colors] of Object.entries(SKIN_COLORS)) {
+    await stage(`panel dropdown selects ${theme} and fills all nine editable colors`, { action: 'panel-theme', theme, paletteColors: colors,
+      ...(theme === 'dark' ? { screenshot: 'theme-dark-visible.png' } : theme === 'nord' ? { screenshot: 'theme-switcher.png' } : {}) });
+    assert.equal(userConfig().get('theme'), theme);
+    assert.equal(userConfig().inspect('colors.comments').globalValue, undefined, 'preset selection must not save the custom draft');
+  }
+  await userConfig().update('theme', 'nord', vscode.ConfigurationTarget.Global);
+  await stage('native theme change synchronizes the panel dropdown', { action: 'panel-external', theme: 'nord', paletteColors: SKIN_COLORS.nord });
+  await stage('returning to Custom restores the unsaved color draft', { action: 'panel-custom', paletteColors: PALETTE });
+  assert.equal(userConfig().get('theme'), 'nord', 'Custom drafts are applied only on Save');
+  await stage('custom editor saves the palette and selects Custom', { action: 'custom-save' });
+  assert.equal(userConfig().get('theme'), 'custom');
+  for (const [category, color] of Object.entries(PALETTE)) assert.equal(userConfig().get(`colors.${category}`), color);
+  assert.deepEqual(vscode.workspace.getConfiguration('typoscriptHighlighting').inspect('customTheme').globalValue.colors, PALETTE,
+    'the visual editor must persist the nine colors in the compact customTheme setting');
+  assert.equal(vscode.workspace.getConfiguration('typoscriptHighlighting').inspect('customTheme').globalValue.legacy.skin, 'editor',
+    'saving custom colors must preserve existing legacy settings in the same scope');
+  await userConfig().update('theme', 'nord', vscode.ConfigurationTarget.Global);
+  await stage('a preset supplies all nine editable fields despite stored custom colors', { action: 'panel-external', theme: 'nord', paletteColors: SKIN_COLORS.nord });
+  const customizedPreset = { ...SKIN_COLORS.nord, comments: '#7FB069' };
+  await stage('adjusting one preset color starts a custom theme and keeps the other eight', {
+    action: 'panel-adjust-one', paletteColors: customizedPreset, screenshot: 'theme-adjusted.png'
+  });
+  assert.equal(userConfig().get('theme'), 'nord');
+  assert.equal(userConfig().get('colors.comments'), PALETTE.comments, 'edits stay in the preview until Save');
   await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
-  await stage('Automatic switches to Light without saving settings', rendered(14, SKIN_COLORS.light));
-  for (const property of ['globalValue', 'workspaceValue', 'workspaceFolderValue']) assert.equal(config(14).inspect('skin')[property], undefined);
+  await stage('editor appearance changes preserve all colors of the custom draft', { action: 'panel-check-draft', paletteColors: customizedPreset });
   await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
-  await stage('Automatic switches back to Dark', rendered(14, SKIN_COLORS.dark));
-  await stage('picker skin selection changes all nine categories', { ...rendered(14, SKIN_COLORS.nord), action: 'picker-skin', skin: 'nord', screenshot: 'skin-picker.png', maximize: true });
-  assert.equal(config(14).inspect('skin').workspaceFolderValue, 'nord');
-  await stage('picker undo restores absent skin override and automatic colors', { ...rendered(14, SKIN_COLORS.dark), action: 'picker-undo' });
-  assert.equal(config(14).inspect('skin').workspaceFolderValue, undefined);
-  await comment(14, '#112233', vscode.ConfigurationTarget.WorkspaceFolder);
-  await stage('skin selection preserves an existing category override', { ...rendered(14, { ...SKIN_COLORS.monokai, comments: '#112233' }), action: 'picker-skin', skin: 'monokai' });
-  assert.equal(config(14).get('colors.comments'), '#112233');
-  await comment(14, undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-  await stage('picker inherits the automatic skin again', { ...rendered(14, SKIN_COLORS.dark), action: 'picker-skin-inherit' });
-  assert.equal(config(14).inspect('skin').workspaceFolderValue, undefined);
-
+  await stage('saving the one-color adjustment stores the complete customized preset', { action: 'custom-save' });
+  assert.equal(userConfig().get('theme'), 'custom');
+  for (const [category, color] of Object.entries(customizedPreset)) assert.equal(userConfig().get(`colors.${category}`), color, category);
+  await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  await show(14);
+  await stage('saved one-color adjustment renders with the other eight preset colors', rendered(14, customizedPreset));
+  await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:stefan-sofka.typoscript-highlighting');
+  await stage('native Settings shows five useful entries without duplicate or legacy color fields', {
+    action: 'settings-clean', screenshot: 'theme-settings.png', editorScreenshot: true
+  });
+  await stage('the native Settings link opens the visual editor with the saved palette', {
+    action: 'settings-open-theme', paletteColors: customizedPreset
+  });
+  const edited = { ...customizedPreset, comments: '#467240' };
+  await stage('the visual editor changes one saved custom color through the native entry point', {
+    action: 'panel-adjust-one', paletteColors: edited
+  });
+  await stage('the visual editor saves the color selected through native Settings', { action: 'custom-save' });
+  assert.deepEqual(vscode.workspace.getConfiguration('typoscriptHighlighting').inspect('customTheme').globalValue.colors, edited);
+  await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  await show(14);
+  await stage('the saved custom color updates real syntax highlighting', rendered(14, edited));
+  await userConfig().update('theme', 'dark', vscode.ConfigurationTarget.Global);
+  await stage('switching from Custom to a preset uses the complete preset', rendered(14, SKIN_COLORS.dark));
+  await userConfig().update('theme', 'custom', vscode.ConfigurationTarget.Global);
+  await stage('switching back to Custom restores the saved colors', rendered(14, edited));
+  await userConfig().update('theme', 'auto', vscode.ConfigurationTarget.Global);
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
+  await stage('Automatic chooses Light without mixing in custom colors', rendered(14, SKIN_COLORS.light));
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
+  await stage('Automatic chooses Dark again', rendered(14, SKIN_COLORS.dark));
+  await userConfig().update('theme', undefined, vscode.ConfigurationTarget.Global);
+  for (const category of Object.keys(PALETTE)) await userConfig().update(`colors.${category}`, undefined, vscode.ConfigurationTarget.Global);
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   const plainUri = vscode.Uri.file(path.join(root, 'v14', 'colors.txt'));
   await fs.writeFile(plainUri.fsPath, fixture(99));
@@ -249,7 +281,7 @@ async function run() {
   await stage('unrelated language default', { major: 99, baseline: 'plaintext' });
   await palette(14, PALETTE);
   for (const [category, color] of Object.entries(PALETTE)) {
-    assert.equal(vscode.workspace.getConfiguration('typoscriptHighlighting', plainUri).get(`colors.${category}`), color);
+    assert.equal(getSettings(vscode, plainUri).get(`colors.${category}`), color);
   }
   await stage('custom colors never affect unrelated languages', { major: 99, restore: 'plaintext' });
   await palette(14, {});
