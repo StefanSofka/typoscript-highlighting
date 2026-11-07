@@ -16,7 +16,7 @@ async function until(description, predicate, timeout = 20000) {
 async function runColorProbe(directory, port, reportFile) {
   const stateFile = path.join(directory, 'color-state.json');
   const ackFile = path.join(directory, 'color-ack.json');
-  const report = { stages: [], rangeChecks: 0, characterChecks: 0 };
+  const report = { stages: [], rangeChecks: 0, characterChecks: 0, imageChecks: 0 };
   const baselines = new Map();
   let socket;
   let current;
@@ -97,26 +97,59 @@ async function runColorProbe(directory, port, reportFile) {
       verifyRanges(lines, data.checks);
       return lines;
     });
-    let webview;
-    async function picker() {
-      if (webview) return webview;
-      const target = await until('color picker frame', async () => (await call('Target.getTargets')).targetInfos
-        .find((entry) => entry.type === 'iframe' && entry.url.includes('stefan-sofka.typoscript-highlighting')));
+    async function webviewContents(target) {
       const { sessionId } = await call('Target.attachToTarget', { targetId: target.targetId, flatten: true });
-      const tree = await until('loaded color picker', async () => {
+      const tree = await until('loaded webview content', async () => {
         const result = await call('Page.getFrameTree', {}, sessionId);
         return result.frameTree.childFrames?.length ? result : false;
       });
       const { executionContextId } = await call('Page.createIsolatedWorld', {
         frameId: tree.frameTree.childFrames[0].frame.id, worldName: 'typoscript-color-test'
       }, sessionId);
-      webview = (expression) => evaluate(expression, executionContextId, sessionId);
-      await until('nine hex inputs', async () => (await webview(`document.querySelectorAll('.row input[type=text]').length`)) === 9);
+      return { evaluate: (expression) => evaluate(expression, executionContextId, sessionId), sessionId };
+    }
+    let webview;
+    async function picker() {
+      if (webview) return webview;
+      const target = await until('color picker frame', async () => (await call('Target.getTargets')).targetInfos
+        .find((entry) => entry.type === 'iframe' && entry.url.includes('stefan-sofka.typoscript-highlighting')));
+      webview = (await webviewContents(target)).evaluate;
+      await until('nine hex inputs', async () => (await webview(`document.querySelectorAll('.color-row input[type=text]').length`)) === 9);
       return webview;
+    }
+    async function verifyReadme(expectedImages) {
+      const target = await until('extension README frame', async () => (await call('Target.getTargets')).targetInfos
+        .find((entry) => entry.type === 'iframe' && !entry.url.includes('stefan-sofka.typoscript-highlighting')));
+      const content = await webviewContents(target);
+      const images = await until('all README screenshots loaded in extension Details', async () => {
+        const snapshot = await content.evaluate(`({ title: document.querySelector('h1')?.textContent,
+          images: [...document.querySelectorAll('img')].map(image => ({ src: image.getAttribute('src'), complete: image.complete,
+            width: image.naturalWidth, height: image.naturalHeight })) })`);
+        assert.equal(snapshot.title, 'TypoScript Highlighting');
+        assert.equal(snapshot.images.length, expectedImages);
+        assert.ok(snapshot.images.every(({ src, complete, width, height }) => /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/(?:[0-9a-f]{40}|v\d+\.\d+\.\d+)\//.test(src)
+          && complete && width >= 128 && height >= 128), JSON.stringify(snapshot.images));
+        return snapshot.images;
+      });
+      report.imageChecks += images.length;
     }
     async function enter(ui, category, value) {
       await ui(`(() => { const input = document.getElementById('hex-${category}'); input.focus(); input.value = ${JSON.stringify(value)};
         input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    }
+    async function verifyNativeSettings() {
+      const allowed = ['typoscriptHighlighting.theme', 'typoscriptHighlighting.customTheme',
+        'typoscriptHighlighting.diagnostics.enabled', 'typoscriptHighlighting.formatting.enabled', 'typoscriptHighlighting.typo3Version'];
+      const info = await until('five compact extension settings', async () => evaluate(`(() => {
+        const counts = [...document.querySelectorAll('.settings-count-widget')]
+          .filter(node => node.getBoundingClientRect().width).map(node => node.textContent.trim());
+        const keys = [...document.querySelectorAll('[data-key^="typoscriptHighlighting."]')].map(node => node.getAttribute('data-key'));
+        return counts.some(text => /^5\\b/.test(text)) && keys.includes('typoscriptHighlighting.theme')
+          && keys.includes('typoscriptHighlighting.customTheme') ? { counts, keys } : false;
+      })()`));
+      assert.ok(info.keys.every(key => allowed.includes(key)), `obsolete native settings must not appear: ${JSON.stringify(info.keys)}`);
+      assert.equal(await evaluate(`document.querySelectorAll('[data-key="typoscriptHighlighting.customTheme"] input[type=text]').length`), 0,
+        'the stored custom palette must use a compact JSON entry, not nine duplicate text fields');
     }
 
     let lastId = 0;
@@ -126,113 +159,126 @@ async function runColorProbe(directory, port, reportFile) {
         return value.id > lastId ? value : false;
       }, 40000);
       const before = report.characterChecks;
-      if (current.action === 'picker') {
-        const ui = await picker();
-        const firstColorVisible = await ui(`(() => {
-          const field = document.getElementById('hex-comments');
-          const rect = field.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight
-            && rect.left >= 0 && rect.right <= window.innerWidth;
+      if (current.action === 'extension-readme') {
+        await verifyReadme(current.expectedImages);
+      } else if (current.action === 'extension-theme-menu') {
+        const manage = await until('extension Manage button', async () => evaluate(`(() => {
+          const button = document.querySelector('.extension-editor .action-label.manage:not(.hide)');
+          const r = button?.getBoundingClientRect();
+          return r?.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : false;
+        })()`));
+        const click = async (point) => {
+          await call('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
+          await call('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
+        };
+        await click(manage);
+        await until('Theme Settings in extension menu', async () => evaluate(`(() => {
+          const labels = [...document.querySelectorAll('.monaco-menu .action-label')];
+          const button = labels.find(node => node.textContent.includes('Theme Settings'));
+          const r = button?.getBoundingClientRect();
+          return r?.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : false;
+        })()`));
+        if (current.menuScreenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
+          await fs.mkdir(process.env.TYPOSCRIPT_SCREENSHOT_DIR, { recursive: true });
+          const capture = await call('Page.captureScreenshot', { format: 'png' });
+          await fs.writeFile(path.join(process.env.TYPOSCRIPT_SCREENSHOT_DIR, current.menuScreenshot), Buffer.from(capture.data, 'base64'));
+        }
+        // Monaco enables menu mouse-up handlers after 100 ms to ignore the
+        // opening click. Screenshot capture used to hide this delay in tests.
+        await pause(150);
+        const item = await evaluate(`(() => {
+          const node = [...document.querySelectorAll('.monaco-menu .action-label')]
+            .find(node => node.textContent.includes('Theme Settings'));
+          if (!node) throw new Error('Theme Settings menu item disappeared');
+          const r = node.getBoundingClientRect();
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
         })()`);
-        assert.ok(firstColorVisible, 'individual color settings must be visible on opening a narrow dialog, before the spectrum');
-        await ui(`document.getElementById('show-picker').click()`);
-        await until('spectrum reachable from the color settings navigation', async () => await ui(`(() => {
-          const rect = document.getElementById('spectrum').getBoundingClientRect();
-          return document.activeElement.id === 'spectrum' && rect.top >= 0 && rect.bottom <= window.innerHeight;
+        await click(item);
+        const ui = await picker();
+        assert.equal(await ui(`document.querySelectorAll('input[type=color]').length`), 9);
+        assert.equal(await ui(`document.getElementById('colors').hidden`), false);
+      } else if (current.action === 'settings-theme') {
+        await until('Theme dropdown in native Settings', async () => evaluate(`(() => {
+          const row = document.querySelector('[data-key="typoscriptHighlighting.theme"]');
+          const select = row?.querySelector('select');
+          if (!select) return false;
+          return [...select.options].map(option => option.textContent).join('|').includes('Custom');
         })()`));
-        const compact = await ui(`window.innerWidth <= 960`);
-        await ui(`document.getElementById('show-colors').click()`);
-        if (compact) {
-          await ui(`document.getElementById('show-picker').click()`);
-          await ui(`document.getElementById('back-colors').click()`);
-        }
-        await until('individual color fields reachable from the spectrum', async () => await ui(`(() => {
-          const rect = document.getElementById('hex-comments').getBoundingClientRect();
-          return document.activeElement.id === 'categories-title' && rect.top >= 0 && rect.bottom <= window.innerHeight;
+        await evaluate(`(() => {
+          const select = document.querySelector('[data-key="typoscriptHighlighting.theme"] select');
+          const option = [...select.options].find(option => option.textContent === 'Nord');
+          select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true }));
+        })()`);
+        await pause(300);
+        await verifyNativeSettings();
+      } else if (current.action === 'settings-clean') {
+        await verifyNativeSettings();
+      } else if (current.action === 'settings-open-theme') {
+        const link = await until('Open Theme Settings link in native Settings', async () => evaluate(`(() => {
+          const row = document.querySelector('[data-key="typoscriptHighlighting.theme"]');
+          const node = [...(row?.querySelectorAll('a') || [])].find(node => /theme settings/i.test(node.textContent));
+          const r = node?.getBoundingClientRect();
+          return r?.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : false;
         })()`));
-        assert.equal(await ui(`document.getElementById('scope').value`), 'user', 'first use defaults to personal colors');
-        await ui(`(() => { const scope = document.getElementById('scope'); scope.value = ${JSON.stringify(current.folderId)}; scope.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        await pause(150);
-        assert.ok((await ui(`[...document.querySelectorAll('.row input[type=text]')].every(x => !x.value)`)), 'opening must retain System Default');
-        await enter(ui, 'values', '#12GGGG');
-        assert.equal(await ui(`document.getElementById('hex-values').getAttribute('aria-invalid')`), 'true');
-        assert.equal(await ui(`document.querySelector('[data-category="values"] .reset').disabled`), false, 'an invalid draft must remain resettable');
-        await pause(200);
-        assert.deepEqual(canonical(await snapshot(14)), canonical(baselines.get(current.baselineKey)), 'invalid UI input must not recolor text');
-        await ui(`document.querySelector('[data-category="values"] .reset').click()`);
-        await until('invalid draft reset clears validation', async () => await ui(`document.getElementById('hex-values').value === ''
-          && document.getElementById('hex-values').getAttribute('aria-invalid') === 'false'`));
-        const palette = Object.fromEntries(current.checks.map((check) => [check.category, check.color]));
-        for (const [category, color] of Object.entries(palette)) await enter(ui, category, color.toLowerCase().replace('#', ''));
-        await rendered(current);
-        await ui(`(() => { document.querySelector('[data-category="comments"] .swatch').click(); const hue = document.getElementById('hue');
-          hue.value = '0'; hue.dispatchEvent(new Event('input', { bubbles: true })); hue.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        // Let nested webview scrolling and the saved hue settle before mapping
-        // the spectrum into workbench coordinates for real pointer input.
-        await pause(150);
-        const rect = await ui(`(() => { const r = document.getElementById('spectrum').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`);
-        const offset = await evaluate(`(() => { const r = [...document.querySelectorAll('iframe')].find(x => x.src.includes('stefan-sofka.typoscript-highlighting')).getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
-        const x = offset.x + rect.x, y = offset.y + rect.y;
-        await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + rect.width / 2, y: y + rect.height / 2 });
-        await call('Input.dispatchMouseEvent', { type: 'mousePressed', x: x + rect.width / 2, y: y + rect.height / 2, button: 'left', clickCount: 1 });
-        await pause(100);
-        await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + rect.width * .75, y: y + rect.height * .25, button: 'left', buttons: 1 });
-        await pause(100);
-        await call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x + rect.width * .75, y: y + rect.height * .25, button: 'left', clickCount: 1 });
-        current.checks = current.checks.map((check) => check.category === 'comments' ? { ...check, color: '#BF3030' } : check);
-      } else if (current.action === 'picker-reset') {
+        await call('Input.dispatchMouseEvent', { type: 'mousePressed', ...link, button: 'left', clickCount: 1 });
+        await call('Input.dispatchMouseEvent', { type: 'mouseReleased', ...link, button: 'left', clickCount: 1 });
+        webview = undefined;
         const ui = await picker();
-        await ui(`document.getElementById('spectrum').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`);
-        await until('spectrum keyboard adjustment', async () => {
-          const value = await ui(`document.getElementById('hex-comments').value`);
-          return value && value !== '#BF3030';
-        });
-        await ui(`[...document.querySelectorAll('.row .reset')].forEach(button => button.click())`);
-        await until('all nine UI resets saved', async () => await ui(`document.getElementById('status').textContent !== 'Saving…'
-          && [...document.querySelectorAll('.row input[type=text]')].every(input => input.value === '')`));
-      } else if (current.action === 'picker-scopes') {
-        const ui = await picker();
-        for (const [scope, color] of [['user', '#112233'], ['workspace', '#332211'], [current.folderId, '#CC0066']]) {
-          await ui(`(() => { const scope = document.getElementById('scope'); scope.value = ${JSON.stringify(scope)};
-            scope.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-          await pause(150);
-          // Explicit empty overrides in lower scopes must be removed first.
-          // The initial reset saved an empty Folder override, so only the Folder
-          // step changes this document; other scopes are inspected by the host.
-          await enter(ui, 'comments', color);
-          await until('scope write acknowledged', async () => {
-            const value = await ui(`document.getElementById('hex-comments').value`);
-            const status = await ui(`document.getElementById('status').textContent`);
-            return value === color && status !== 'Saving…';
-          });
+        assert.equal(await ui(`document.querySelectorAll('input[type=color]').length`), 9);
+        assert.equal(await ui(`document.getElementById('theme').value`), 'custom');
+        for (const [category, color] of Object.entries(current.paletteColors)) {
+          assert.equal(await ui(`document.getElementById('hex-${category}').value`), color, `native entry point keeps saved ${category}`);
         }
-      } else if (current.action === 'picker-inherit') {
+      } else if (current.action === 'custom-open') {
         const ui = await picker();
-        await until('folder color source', async () => (await ui(`document.querySelector('[data-category="comments"] .source').textContent`)).includes('Folder'));
-        await ui(`document.querySelector('[data-category="comments"] .inherit').click()`);
-        await until('inherited color source', async () => (await ui(`document.querySelector('[data-category="comments"] .source').textContent`)).includes('Inherited · Workspace'));
-      } else if (current.action === 'picker-theme') {
-        await (await picker())(`document.querySelector('[data-category="comments"] .reset').click()`);
-      } else if (current.action === 'picker-undo') {
-        await (await picker())(`document.getElementById('undo').click()`);
-      } else if (current.action === 'picker-bulk-theme') {
-        await (await picker())(`document.getElementById('reset-all').click()`);
-      } else if (current.action === 'picker-bulk-inherit') {
-        await (await picker())(`document.getElementById('inherit-all').click()`);
-      } else if (current.action === 'picker-skin') {
+        assert.equal(await ui(`document.querySelectorAll('input[type=color]').length`), 9);
+        assert.equal(await ui(`document.querySelectorAll('button').length`), 1);
+        assert.deepEqual(await ui(`[...document.getElementById('theme').options].map(option => option.value)`), ['auto', 'dark', 'light', 'nord', 'monokai', 'solarized', 'custom']);
+        assert.equal(await ui(`document.getElementById('theme').value`), 'nord');
+        assert.equal(await ui(`document.getElementById('colors').hidden`), false);
+        assert.equal(await ui(`document.getElementById('save').disabled`), true);
+      } else if (current.action === 'custom-draft') {
         const ui = await picker();
-        assert.equal(await ui(`document.getElementById('skin').options.length`), 7);
-        await ui(`(() => { const palette = document.getElementById('palette'); palette.value = 'base'; palette.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        await until('base palette selected', async () => await ui(`document.getElementById('palette').value === 'base'`));
-        await ui(`(() => { const skin = document.getElementById('skin'); skin.value = ${JSON.stringify(current.skin)}; skin.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        await until('skin selection saved', async () => await ui(`document.getElementById('status').textContent !== 'Saving…' && document.getElementById('skin').value === ${JSON.stringify(current.skin)}`));
-      } else if (current.action === 'picker-skin-inherit') {
-        await (await picker())(`document.getElementById('inherit-skin').click()`);
-      } else if (current.action === 'picker-palette') {
-        const ui = await picker();
-        await ui(`(() => { const palette = document.getElementById('palette'); palette.value = ${JSON.stringify(current.palette)}; palette.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        await pause(150);
+        assert.equal(await ui(`document.querySelectorAll('input[type=color]').length`), 9);
+        assert.equal(await ui(`document.querySelectorAll('button').length`), 1);
+        await enter(ui, 'comments', '#XX0011');
+        assert.equal(await ui(`document.getElementById('theme').value`), 'custom');
+        assert.equal(await ui(`document.getElementById('save').disabled`), true);
+        assert.equal(await ui(`document.getElementById('hex-comments').getAttribute('aria-invalid')`), 'true');
         for (const [category, color] of Object.entries(current.paletteColors)) await enter(ui, category, color);
+        assert.equal(await ui(`document.getElementById('save').disabled`), false);
+        await ui(`(() => {
+          const picker = document.querySelector('[data-category="values"] input[type=color]');
+          picker.value = '#1234ab'; picker.dispatchEvent(new Event('input', { bubbles: true }));
+        })()`);
+        assert.equal(await ui(`document.getElementById('hex-values').value`), '#1234AB');
+      } else if (current.action === 'panel-theme' || current.action === 'panel-external') {
+        const ui = await picker();
+        if (current.action === 'panel-theme') {
+          await ui(`(() => { const select = document.getElementById('theme'); select.value = ${JSON.stringify(current.theme)}; select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        }
+        await until('preset selected with editable color fields visible', async () => await ui(`document.getElementById('theme').value === ${JSON.stringify(current.theme)}
+          && !document.getElementById('theme').disabled && !document.getElementById('colors').hidden && !document.getElementById('save').hidden`));
+        const previewColors = await ui(`Object.fromEntries([...document.querySelectorAll('[data-color]')].map(node => [node.dataset.color, getComputedStyle(node).color]))`);
+        for (const [category, color] of Object.entries(current.paletteColors)) {
+          assert.equal(previewColors[category], rgb(color), `preset preview: ${category}`);
+          assert.equal(await ui(`document.getElementById('hex-${category}').value`), color, `preset color field: ${category}`);
+        }
+      } else if (current.action === 'panel-custom') {
+        const ui = await picker();
+        await ui(`(() => { const select = document.getElementById('theme'); select.value = 'custom'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        assert.equal(await ui(`document.getElementById('colors').hidden`), false);
+        for (const [category, color] of Object.entries(current.paletteColors)) assert.equal(await ui(`document.getElementById('hex-${category}').value`), color);
+      } else if (current.action === 'panel-adjust-one' || current.action === 'panel-check-draft') {
+        const ui = await picker();
+        if (current.action === 'panel-adjust-one') await enter(ui, 'comments', current.paletteColors.comments);
+        assert.equal(await ui(`document.getElementById('theme').value`), 'custom');
+        assert.equal(await ui(`document.getElementById('save').disabled`), false);
+        for (const [category, color] of Object.entries(current.paletteColors)) assert.equal(await ui(`document.getElementById('hex-${category}').value`), color, `customized preset: ${category}`);
+      } else if (current.action === 'custom-save') {
+        const ui = await picker();
+        await ui(`document.getElementById('save').click()`);
+        await until('custom theme saved', async () => await ui(`document.getElementById('status').textContent === 'Custom theme saved'`));
       }
       if (current.baseline) {
         let previous;
@@ -322,7 +368,7 @@ async function runColorProbe(directory, port, reportFile) {
     await fs.mkdir(path.dirname(reportFile), { recursive: true });
     await fs.writeFile(reportFile, `${JSON.stringify(report, null, 2)}\n`);
   }
-  console.log(`PASS: ${report.stages.length} rendered-color scenarios, ${report.rangeChecks} ranges, ${report.characterChecks} character foreground checks. Report: ${reportFile}`);
+  console.log(`PASS: ${report.stages.length} rendered UI scenarios, ${report.rangeChecks} ranges, ${report.characterChecks} character foreground checks, ${report.imageChecks} images. Report: ${reportFile}`);
 }
 
 module.exports = { runColorProbe };

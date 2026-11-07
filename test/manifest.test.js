@@ -29,7 +29,7 @@ test('Marketplace icon contains PNG image data with supported dimensions', () =>
 });
 
 test('runtime dependencies contain the token engines and static YAML parser', () => {
-  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['vscode-oniguruma', 'vscode-textmate', 'yaml']);
+  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['jsonc-parser', 'vscode-oniguruma', 'vscode-textmate', 'yaml']);
   assert.ok(manifest.devDependencies['@vscode/vsce']);
   assert.equal(lock.version, manifest.version);
   assert.equal(lock.packages[''].version, manifest.version);
@@ -37,15 +37,14 @@ test('runtime dependencies contain the token engines and static YAML parser', ()
   assert.deepEqual(lock.packages[''].dependencies, manifest.dependencies);
 });
 
-test('every color accepts direct hex and links to the spectrum picker with System Default', () => {
+test('saved colors are grouped behind the visual editor instead of nine native fields', () => {
   const { TOKEN_CATEGORIES } = require('../lib/tokenizer');
   for (const category of Object.keys(TOKEN_CATEGORIES)) {
-    const setting = manifest.contributes.configuration.properties[`typoscriptHighlighting.colors.${category}`];
+    const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.customTheme'].properties.colors.properties[category];
     assert.equal(setting.default, '');
-    assert.equal(setting.scope, 'resource');
     assert.equal(setting.type, 'string');
     assert.equal(setting.enum, undefined, 'color fields must not render dropdowns');
-    assert.ok(setting.markdownDescription.includes('command:typoscriptHighlighting.configureColors?'));
+    assert.equal(manifest.contributes.configuration.properties[`typoscriptHighlighting.colors.${category}`], undefined);
     const pattern = new RegExp(setting.pattern);
     for (const value of ['', '#123456', '#aBcDeF']) assert.ok(pattern.test(value));
     for (const value of ['red', '#123', '#12345678', '#12345Z']) assert.ok(!pattern.test(value));
@@ -53,15 +52,30 @@ test('every color accepts direct hex and links to the spectrum picker with Syste
   }
   assert.ok(manifest.contributes.commands.some(({ command }) => command === 'typoscriptHighlighting.configureColors'));
   assert.ok(manifest.activationEvents.includes('onCommand:typoscriptHighlighting.configureColors'));
-  assert.ok(manifest.contributes.configuration.properties['typoscriptHighlighting.customColors'].deprecationMessage);
+  const saved = manifest.contributes.configuration.properties['typoscriptHighlighting.customTheme'];
+  assert.equal(saved.scope, 'resource');
+  assert.deepEqual(saved.type, ['object']);
+  assert.ok(saved.markdownDescription.includes('command:typoscriptHighlighting.configureColors'));
+  assert.deepEqual(Object.keys(manifest.contributes.configuration.properties).sort(), [
+    'typoscriptHighlighting.customTheme', 'typoscriptHighlighting.diagnostics.enabled', 'typoscriptHighlighting.formatting.enabled',
+    'typoscriptHighlighting.theme', 'typoscriptHighlighting.typo3Version'
+  ]);
 });
 
-test('Comment Rules provides explicit TYPO3 11 through 14 dropdown entries', () => {
-  const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.commentRules'];
+test('legacy Comment Rules remain valid inside preserved theme data', () => {
+  const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.customTheme'].properties.legacy.properties.commentRules;
   assert.equal(setting.default, 'auto');
   assert.deepEqual(setting.enum, ['auto', 'v11', 'v12', 'v13', 'v14']);
   assert.equal(setting.enumItemLabels.length, setting.enum.length);
   assert.equal(setting.enumDescriptions.length, setting.enum.length);
+});
+
+test('the extension menu opens the visual Theme Settings page only for this extension', () => {
+  const command = manifest.contributes.commands.find(({ command }) => command === 'typoscriptHighlighting.configureColors');
+  assert.equal(command.title, 'Theme Settings');
+  const item = manifest.contributes.menus['extension/context'].find(({ command }) => command === 'typoscriptHighlighting.configureColors');
+  assert.equal(item.when, 'extension == stefan-sofka.typoscript-highlighting && extensionStatus == installed');
+  assert.ok(!manifest.contributes.commands.some(({ command }) => command === 'typoscriptHighlighting.editCustomTheme'), 'one visible settings command; keep the old ID as a compatibility alias');
 });
 
 test('language configuration defines comments, matching pairs, indentation and folding', () => {

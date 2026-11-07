@@ -8,9 +8,8 @@ const { TOKEN_CATEGORIES } = require('../lib/tokenizer');
 const manifest = require('../package.json');
 
 test('installation defaults to Automatic and ships five complete, distinct skins', () => {
-  const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.skin'];
+  const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.customTheme'].properties.legacy.properties.skin;
   assert.equal(setting.default, 'auto');
-  assert.equal(setting.scope, 'resource');
   assert.deepEqual(setting.enum, SKIN_OPTIONS.map(({ id }) => id));
   assert.deepEqual(setting.enumItemLabels, SKIN_OPTIONS.map(({ label }) => label));
   assert.equal(setting.enumDescriptions.length, setting.enum.length);
@@ -114,4 +113,28 @@ test('picker previews the skin at its selected scope and identifies more specifi
     assert.equal(comment.color, color);
     assert.equal(comment.source, id === 'user' ? 'Nord skin' : 'Workspace');
   }
+});
+
+test('a selected preset ignores saved custom colors without deleting them', () => {
+  const editor = createEditor();
+  const uri = editor.document('/site/setup.typoscript').uri;
+  editor.palettes.set(uri.toString(), { comments: '#123456' });
+  editor.variants.set(uri.toString(), { darkColors: { values: '#ABCDEF' } });
+  for (const theme of ['auto', ...SKINS.map(({ id }) => id)]) {
+    editor.themes.set(uri.toString(), theme);
+    assert.deepEqual(readColors(editor.vscode, uri), resolveSkin(theme, 'dark').colors);
+  }
+  assert.equal(editor.palettes.get(uri.toString()).comments, '#123456');
+  editor.themes.set(uri.toString(), 'custom');
+  assert.equal(readColors(editor.vscode, uri).comments, '#123456');
+  assert.notEqual(readColors(editor.vscode, uri).values, '#ABCDEF', 'Custom uses one palette rather than dark/light overrides');
+});
+
+test('Theme is exposed directly in Settings with exactly the ready/custom choices', () => {
+  const setting = manifest.contributes.configuration.properties['typoscriptHighlighting.theme'];
+  assert.equal(setting.default, 'auto');
+  assert.deepEqual(setting.enum, ['auto', 'dark', 'light', 'nord', 'monokai', 'solarized', 'custom']);
+  assert.ok(setting.markdownDescription.includes('command:typoscriptHighlighting.configureColors'));
+  assert.equal(manifest.contributes.configuration.properties['typoscriptHighlighting.darkColors'], undefined);
+  assert.equal(manifest.contributes.configuration.properties['typoscriptHighlighting.lightColors'], undefined);
 });
