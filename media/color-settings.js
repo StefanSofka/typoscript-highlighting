@@ -82,6 +82,21 @@
     renderPicker();
   }
 
+  function showColors() {
+    const title = document.getElementById('categories-title');
+    title.scrollIntoView({ block: 'start' });
+    title.focus({ preventScroll: true });
+  }
+
+  function showPicker() {
+    spectrum.scrollIntoView({ block: 'center' });
+    spectrum.focus({ preventScroll: true });
+  }
+
+  document.getElementById('show-colors').addEventListener('click', showColors);
+  document.getElementById('back-colors').addEventListener('click', showColors);
+  document.getElementById('show-picker').addEventListener('click', showPicker);
+
   function renderRow(entry) {
     const row = rows.get(entry.category);
     if (document.activeElement !== row.input) row.input.value = entry.color;
@@ -159,8 +174,7 @@
       swatch.setAttribute('aria-label', `Choose ${entry.label.toLowerCase()} color`);
       swatch.addEventListener('click', () => {
         select(entry.category);
-        spectrum.scrollIntoView({ block: 'center' });
-        spectrum.focus({ preventScroll: true });
+        showPicker();
       });
       const input = document.createElement('input');
       input.type = 'text';

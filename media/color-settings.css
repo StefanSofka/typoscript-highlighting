@@ -20,6 +20,10 @@ button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, select:focus-visible, #spectrum:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .layout { display: grid; grid-template-columns: minmax(550px, 1fr) 300px; grid-template-areas: "colors picker"; gap: 22px; align-items: start; }
 #categories { grid-area: colors; }
+#categories-title { scroll-margin-top: 16px; }
+.categories-help { font-size: 12px; margin-bottom: 12px; }
+.color-navigation { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+#back-colors { display: none; }
 .row { display: grid; grid-template-columns: minmax(130px, 1fr) 32px 148px auto; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-left: 2px solid transparent; }
 .row.selected { border-left-color: var(--vscode-focusBorder); background: var(--vscode-list-hoverBackground); }
 .label { display: block; font-weight: 600; margin-bottom: 4px; }
@@ -40,7 +44,7 @@ input[aria-invalid=true] { border-color: var(--vscode-inputValidation-errorBorde
 .selected-color { display: flex; gap: 12px; align-items: center; }
 #preview { display: inline-block; width: 30px; height: 30px; border-radius: 3px; border: 1px solid var(--vscode-foreground); }
 #color-value { font-size: 13px; }
-@media (max-width: 900px) { body { padding: 20px; } .layout { grid-template-columns: 1fr; grid-template-areas: "picker" "colors"; } .picker { position: static; max-width: 430px; } }
+@media (max-width: 960px) { body { padding: 20px; } .layout { grid-template-columns: 1fr; grid-template-areas: "colors" "picker"; } .picker { position: static; max-width: 430px; } #back-colors { display: inline-block; margin-bottom: 16px; } }
 @media (max-width: 530px) { .row { grid-template-columns: 1fr 32px 148px; } .row .reset { grid-column: 3; } .error { grid-column: 1 / -1; } #status { margin-left: 0; width: 100%; } }
 .source { color: var(--vscode-descriptionForeground); font-size: 11px; margin-top: 5px; }
 .bulk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }

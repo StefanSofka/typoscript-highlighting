@@ -172,7 +172,7 @@ async function run() {
   await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
   await vscode.commands.executeCommand('typoscriptHighlighting.configureColors', 'comments');
   await stage('picker UI enters all nine hex colors and adjusts the spectrum', { ...rendered(14), action: 'picker', baselineKey: 'dark-14',
-    folderId: `folder:${vscode.workspace.getWorkspaceFolder(uris.get(14)).uri.toString()}` });
+    folderId: `folder:${vscode.workspace.getWorkspaceFolder(uris.get(14)).uri.toString()}`, screenshot: 'individual-colors.png' });
   assert.equal(config(14).get('colors.comments'), '#BF3030');
   for (const [category, color] of Object.entries(PALETTE)) if (category !== 'comments') assert.equal(config(14).get(`colors.${category}`), color);
   await stage('picker UI resets all nine categories to System Default', { major: 14, action: 'picker-reset', restore: 'dark-14' });
