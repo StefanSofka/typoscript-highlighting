@@ -2,7 +2,7 @@
 
 TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Version **1.7.0** adds five ready-to-use syntax skins and automatic Light/Dark selection. Highlighting works immediately after installation. Site-set dependencies, typed YAML settings and project navigation remain available. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks.
+Version **1.7.1** keeps individual color settings visible in narrow or split editor groups, alongside the five syntax skins and automatic Light/Dark selection. Highlighting works immediately after installation. Site-set dependencies, typed YAML settings and project navigation remain available. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks.
 
 [Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
@@ -12,14 +12,14 @@ Version **1.7.0** adds five ready-to-use syntax skins and automatic Light/Dark s
 
 ## Installation
 
-Download **typoscript-highlighting-1.7.0.vsix** from the [GitHub release 1.7.0](https://github.com/StefanSofka/typoscript-highlighting/releases/tag/v1.7.0), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively, install the downloaded file from a terminal:
+Download **typoscript-highlighting-1.7.1.vsix** from the [GitHub release 1.7.1](https://github.com/StefanSofka/typoscript-highlighting/releases/tag/v1.7.1), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively, install the downloaded file from a terminal:
 
 ```bash
 # VSCodium
-codium --install-extension typoscript-highlighting-1.7.0.vsix
+codium --install-extension typoscript-highlighting-1.7.1.vsix
 
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.7.0.vsix
+code --install-extension typoscript-highlighting-1.7.1.vsix
 ```
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
@@ -173,6 +173,10 @@ The command preserves the original override. More specific individual language o
 ## Customize colors
 
 Run **TypoScript Highlighting: Configure Colors**. The spectrum, hex fields and open TypoScript editors update together. The dialog starts with **User** settings and remembers your selected scope and palette.
+
+The **Individual colors** section contains all nine editable category fields. In a narrow or split editor, these fields appear before the large spectrum. Use **Color picker** or click a category's swatch to reach the spectrum; **Back to individual colors** returns to the fields. The **Individual colors** navigation button also takes you directly to them. Skins remain a starting palette: you can customize every category with any skin selected.
+
+[![Individual color fields stay directly accessible beside the editor, including in a split layout.](images/screenshots/individual-colors.png)](images/screenshots/individual-colors.png)
 
 ### Ready-to-use skins
 

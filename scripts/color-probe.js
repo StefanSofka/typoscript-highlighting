@@ -128,6 +128,28 @@ async function runColorProbe(directory, port, reportFile) {
       const before = report.characterChecks;
       if (current.action === 'picker') {
         const ui = await picker();
+        const firstColorVisible = await ui(`(() => {
+          const field = document.getElementById('hex-comments');
+          const rect = field.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight
+            && rect.left >= 0 && rect.right <= window.innerWidth;
+        })()`);
+        assert.ok(firstColorVisible, 'individual color settings must be visible on opening a narrow dialog, before the spectrum');
+        await ui(`document.getElementById('show-picker').click()`);
+        await until('spectrum reachable from the color settings navigation', async () => await ui(`(() => {
+          const rect = document.getElementById('spectrum').getBoundingClientRect();
+          return document.activeElement.id === 'spectrum' && rect.top >= 0 && rect.bottom <= window.innerHeight;
+        })()`));
+        const compact = await ui(`window.innerWidth <= 960`);
+        await ui(`document.getElementById('show-colors').click()`);
+        if (compact) {
+          await ui(`document.getElementById('show-picker').click()`);
+          await ui(`document.getElementById('back-colors').click()`);
+        }
+        await until('individual color fields reachable from the spectrum', async () => await ui(`(() => {
+          const rect = document.getElementById('hex-comments').getBoundingClientRect();
+          return document.activeElement.id === 'categories-title' && rect.top >= 0 && rect.bottom <= window.innerHeight;
+        })()`));
         assert.equal(await ui(`document.getElementById('scope').value`), 'user', 'first use defaults to personal colors');
         await ui(`(() => { const scope = document.getElementById('scope'); scope.value = ${JSON.stringify(current.folderId)}; scope.dispatchEvent(new Event('change', { bubbles: true })); })()`);
         await pause(150);
@@ -145,6 +167,9 @@ async function runColorProbe(directory, port, reportFile) {
         await rendered(current);
         await ui(`(() => { document.querySelector('[data-category="comments"] .swatch').click(); const hue = document.getElementById('hue');
           hue.value = '0'; hue.dispatchEvent(new Event('input', { bubbles: true })); hue.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        // Let nested webview scrolling and the saved hue settle before mapping
+        // the spectrum into workbench coordinates for real pointer input.
+        await pause(150);
         const rect = await ui(`(() => { const r = document.getElementById('spectrum').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`);
         const offset = await evaluate(`(() => { const r = [...document.querySelectorAll('iframe')].find(x => x.src.includes('stefan-sofka.typoscript-highlighting')).getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
         const x = offset.x + rect.x, y = offset.y + rect.y;
