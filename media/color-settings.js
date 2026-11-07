@@ -4,6 +4,7 @@
   const categories = document.getElementById('categories');
   const scope = document.getElementById('scope');
   const paletteSelect = document.getElementById('palette');
+  const skinSelect = document.getElementById('skin');
   const status = document.getElementById('status');
   const spectrum = document.getElementById('spectrum');
   const hue = document.getElementById('hue');
@@ -246,6 +247,15 @@
   }
   scope.addEventListener('change', () => changeContext({ type: 'target', targetId: scope.value }));
   paletteSelect.addEventListener('change', () => changeContext({ type: 'palette', palette: paletteSelect.value }));
+  function changeSkin(skin) {
+    for (const category of pending.keys()) flush(category);
+    const id = ++sequence;
+    pending.set('*', { id, sent: true, skin });
+    lastError = ''; status.textContent = 'Saving…';
+    vscode.postMessage({ type: 'skin', skin, id });
+  }
+  skinSelect.addEventListener('change', () => changeSkin(skinSelect.value));
+  document.getElementById('inherit-skin').addEventListener('click', () => changeSkin('inherit'));
   for (const [id, type, action] of [['inherit-all', 'bulk', 'inherit'], ['reset-all', 'bulk', 'theme'], ['undo', 'undo']]) {
     document.getElementById(id).addEventListener('click', () => {
       for (const category of pending.keys()) flush(category);
@@ -268,6 +278,17 @@
       document.getElementById('undo').disabled = !data.canUndo;
       if (changedTarget) pending.clear();
       const focused = document.activeElement;
+      skinSelect.disabled = false;
+      skinSelect.replaceChildren(...data.skins.map((skin) => {
+        const option = document.createElement('option');
+        option.value = skin.id; option.textContent = skin.label;
+        return option;
+      }));
+      const draftSkin = pending.get('*')?.skin;
+      skinSelect.value = draftSkin && draftSkin !== 'inherit' ? draftSkin : data.skin.selected;
+      document.getElementById('inherit-skin').disabled = data.skin.inherited;
+      const skin = data.skins.find((entry) => entry.id === data.skin.selected);
+      document.getElementById('skin-help').textContent = `${skin.description} Using ${data.skin.label} · ${data.skin.inherited ? 'Inherited · ' : ''}${data.skin.source}${data.skin.overridden ? ' · Overridden for active file' : ''}. Custom category colors take precedence.`;
       scope.replaceChildren(...data.targets.map((target) => {
         const option = document.createElement('option');
         option.value = target.id;

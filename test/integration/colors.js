@@ -4,6 +4,14 @@ const path = require('node:path');
 const vscode = require('vscode');
 const { PALETTE, fixture, checks } = require('./color-fixture');
 const DARK_PALETTE = { comments: '#7FB069', objectPaths: '#82AAFF', values: '#EBCB8B', operators: '#C099FF', constants: '#C4A7E7', conditions: '#E899C0', imports: '#78C7BD', functions: '#D8AA72', punctuation: '#B7C3D0' };
+// Independent expected foregrounds for the bundled skins.
+const SKIN_COLORS = {
+  dark: { comments: '#7FA870', objectPaths: '#9CDCFE', values: '#CE9178', operators: '#C586C0', constants: '#4FC1FF', conditions: '#DCDCAA', imports: '#D7BA7D', functions: '#B5CEA8', punctuation: '#D4D4D4' },
+  light: { comments: '#426B35', objectPaths: '#005A9C', values: '#A31515', operators: '#6F2B94', constants: '#007080', conditions: '#795E26', imports: '#8A4500', functions: '#176F2C', punctuation: '#383A42' },
+  nord: { comments: '#A3BE8C', objectPaths: '#88C0D0', values: '#EBCB8B', operators: '#B48EAD', constants: '#D08770', conditions: '#81A1C1', imports: '#8FBCBB', functions: '#E5C07B', punctuation: '#D8DEE9' },
+  monokai: { comments: '#A6AA95', objectPaths: '#A6E22E', values: '#E6DB74', operators: '#F56A9B', constants: '#AE81FF', conditions: '#66D9EF', imports: '#FDAD60', functions: '#A6E22E', punctuation: '#F8F8F2' },
+  solarized: { comments: '#8BA4A6', objectPaths: '#6CB6E8', values: '#BFA34B', operators: '#D67EC1', constants: '#9CA0F5', conditions: '#7EB846', imports: '#53B5AB', functions: '#EE8C69', punctuation: '#A8BFC0' }
+};
 
 async function run() {
   const root = process.env.TYPOSCRIPT_TEST_DIRECTORY;
@@ -79,6 +87,9 @@ async function run() {
   }
   await show(11);
   api = await vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting').activate();
+  for (const property of ['globalValue', 'workspaceValue', 'workspaceFolderValue']) assert.equal(config(11).inspect('skin')[property], undefined);
+  await stage('fresh installation automatically uses Dark skin', rendered(11, SKIN_COLORS.dark));
+  await vscode.workspace.getConfiguration('typoscriptHighlighting').update('skin', 'editor', vscode.ConfigurationTarget.Global);
   for (const major of [11, 12, 13, 14]) {
     const editor = await show(major);
     await api.whenIdle();
@@ -204,6 +215,31 @@ async function run() {
   await config(14).update('darkColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
   await config(14).update('lightColors', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
   await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
+
+  // Exercise skin changes and the real selector after the legacy color checks.
+  for (const [skin, colors] of Object.entries(SKIN_COLORS)) {
+    await config(14).update('skin', skin, vscode.ConfigurationTarget.WorkspaceFolder);
+    await stage(`${skin} skin renders all nine categories`, rendered(14, colors));
+  }
+  await config(14).update('skin', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await vscode.workspace.getConfiguration('typoscriptHighlighting').update('skin', undefined, vscode.ConfigurationTarget.Global);
+  await stage('removing skin overrides restores automatic Dark', rendered(14, SKIN_COLORS.dark));
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Light+', vscode.ConfigurationTarget.Global);
+  await stage('Automatic switches to Light without saving settings', rendered(14, SKIN_COLORS.light));
+  for (const property of ['globalValue', 'workspaceValue', 'workspaceFolderValue']) assert.equal(config(14).inspect('skin')[property], undefined);
+  await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'Default Dark+', vscode.ConfigurationTarget.Global);
+  await stage('Automatic switches back to Dark', rendered(14, SKIN_COLORS.dark));
+  await stage('picker skin selection changes all nine categories', { ...rendered(14, SKIN_COLORS.nord), action: 'picker-skin', skin: 'nord', screenshot: 'skin-picker.png', maximize: true });
+  assert.equal(config(14).inspect('skin').workspaceFolderValue, 'nord');
+  await stage('picker undo restores absent skin override and automatic colors', { ...rendered(14, SKIN_COLORS.dark), action: 'picker-undo' });
+  assert.equal(config(14).inspect('skin').workspaceFolderValue, undefined);
+  await comment(14, '#112233', vscode.ConfigurationTarget.WorkspaceFolder);
+  await stage('skin selection preserves an existing category override', { ...rendered(14, { ...SKIN_COLORS.monokai, comments: '#112233' }), action: 'picker-skin', skin: 'monokai' });
+  assert.equal(config(14).get('colors.comments'), '#112233');
+  await comment(14, undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+  await stage('picker inherits the automatic skin again', { ...rendered(14, SKIN_COLORS.dark), action: 'picker-skin-inherit' });
+  assert.equal(config(14).inspect('skin').workspaceFolderValue, undefined);
+
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   const plainUri = vscode.Uri.file(path.join(root, 'v14', 'colors.txt'));
   await fs.writeFile(plainUri.fsPath, fixture(99));

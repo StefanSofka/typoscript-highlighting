@@ -2,24 +2,24 @@
 
 TypoScript and TSconfig support for **Visual Studio Code and VSCodium**, with TYPO3-aware highlighting, project navigation and configurable colors.
 
-Version **1.6.1** includes site-set dependencies, typed YAML settings and implicitly loaded TypoScript with a site context for each project, plus a corrected PNG icon for Marketplace uploads. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks. No version setting is needed for a complete project.
+Version **1.7.0** adds five ready-to-use syntax skins and automatic Light/Dark selection. Highlighting works immediately after installation. Site-set dependencies, typed YAML settings and project navigation remain available. Composer and Classic TYPO3 installations are detected automatically, including active `typo3_src` symlinks.
 
 [Install](#installation) · [Get started](#quick-start) · [Navigation](#navigate-your-project) · [Colors](#customize-colors) · [Settings](#settings-reference)
 
 [![TypoScript beside the color picker in VSCodium.](images/screenshots/custom-colors-dark.png)](images/screenshots/custom-colors-dark.png)
 
-*Actual VSCodium screenshots. Custom foreground colors are optional; a fresh installation follows your editor theme.*
+*Actual VSCodium screenshots. A fresh installation automatically selects the Light or Dark syntax skin to match the editor color mode.*
 
 ## Installation
 
-Download **typoscript-highlighting-1.6.1.vsix** from [GitHub Releases](https://github.com/StefanSofka/typoscript-highlighting/releases/latest), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively:
+Download **typoscript-highlighting-1.7.0.vsix** from the [GitHub release 1.7.0](https://github.com/StefanSofka/typoscript-highlighting/releases/tag/v1.7.0), then run **Extensions: Install from VSIX…** in the Command Palette. Alternatively, install the downloaded file from a terminal:
 
 ```bash
 # VSCodium
-codium --install-extension typoscript-highlighting-1.6.1.vsix
+codium --install-extension typoscript-highlighting-1.7.0.vsix
 
 # Visual Studio Code
-code --install-extension typoscript-highlighting-1.6.1.vsix
+code --install-extension typoscript-highlighting-1.7.0.vsix
 ```
 
 The extension is also listed on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stefan-sofka.typoscript-highlighting) and [Open VSX](https://open-vsx.org/extension/stefan-sofka/typoscript-highlighting). Registry versions are published separately from GitHub releases.
@@ -29,7 +29,7 @@ Requires a VS Code-compatible editor with API version **1.70 or newer**. No sepa
 ## Quick start
 
 1. Open your TYPO3 project or Sitepackage folder.
-2. Open a `.typoscript` or `.tsconfig` file. Highlighting starts automatically.
+2. Open a `.typoscript` or `.tsconfig` file. Highlighting starts automatically with the matching Light or Dark skin.
 3. Check the **TYPO3 version indicator** in the status bar. Its tooltip explains the detected version, installation type, source file and any mismatch with the lockfile. Click it to inspect detection.
 4. For site-set navigation, check the **Site** or **Set** indicator. Click it to choose a site when several sites share your code.
 5. Ctrl+click an `@import` path, open **Outline**, or invoke completion with **Ctrl+Space**.
@@ -174,7 +174,25 @@ The command preserves the original override. More specific individual language o
 
 Run **TypoScript Highlighting: Configure Colors**. The spectrum, hex fields and open TypoScript editors update together. The dialog starts with **User** settings and remembers your selected scope and palette.
 
-[![The dark-theme palette with scope controls, inheritance, undo and a code preview.](images/screenshots/color-picker-dark.png)](images/screenshots/color-picker-dark.png)
+### Ready-to-use skins
+
+The **Skin** selector offers five presets:
+
+| Skin | Appearance |
+| --- | --- |
+| **Dark** | Classic colors for a dark editor background. |
+| **Light** | Classic colors for a light editor background. |
+| **Nord** | Cool blue and muted colors. |
+| **Monokai** | Vivid green, pink and gold. |
+| **Solarized** | Warm earth tones with blue and teal. |
+
+**Automatic (Light / Dark)** is the installation default. It selects Light or Dark from the editor's active color mode and updates open files when that mode changes. When VSCodium/VS Code follows the operating system, the skin follows system changes too. OS theme switching is controlled by the editor's `window.autoDetectColorScheme` setting; see the [editor theme documentation](https://code.visualstudio.com/docs/configure/themes#automatically-switch-based-on-os-color-scheme). The extension uses the active editor mode and does not change this preference.
+
+Nord, Monokai and Solarized each adapt their foreground colors to light and dark backgrounds. Dark and Light are fixed presets. These skins color TypoScript and TSconfig; the editor retains its workbench and background colors. **Editor theme** uses the syntax colors supplied by your editor theme.
+
+Skin changes apply immediately at the selected User, Workspace or Folder scope. **Use inherited skin** removes that scope's selection, and **Undo last change** restores the previous selection. Existing custom colors take precedence over the skin. Use **Inherit all** in the corresponding Base/Dark/Light palettes to reveal skin colors again.
+
+[![The Nord skin with preset selection, custom colors, inheritance and a live preview in VSCodium.](images/screenshots/skin-picker.png)](images/screenshots/skin-picker.png)
 
 ### Scope and inheritance
 
@@ -184,7 +202,7 @@ Choose **User**, **Workspace**, or **Folder: …** as the save destination. Each
 | --- | --- |
 | Enter `#RRGGBB` or use the spectrum | Save a custom color. |
 | **System Default**, or clear the field | Save an explicit empty value, forcing the editor theme over inherited extension colors. |
-| **Use inherited** | Remove the local override and use inherited colors again. |
+| **Use inherited** | Remove the local override and use inherited custom colors or the selected skin. |
 
 **Inherit all** and **Use editor theme for all** apply the corresponding action to all nine categories at that scope and palette. **Undo last change** restores the exact previous local values, including whether a setting was absent. Undo history belongs to the open dialog.
 
@@ -192,7 +210,7 @@ Valid hex entries save immediately. The picker also accepts six digits without `
 
 ### Base, dark and light palettes
 
-The **Base** palette applies to all themes. Optional **Dark themes** and **Light themes** palettes override individual categories for the corresponding theme type. Missing categories inherit the base palette; **System Default** explicitly follows the editor theme. High-contrast themes use the matching dark or light palette.
+The **Base** palette applies to all themes. Optional **Dark themes** and **Light themes** palettes override individual categories for the corresponding theme type. Missing categories inherit the base palette, then the skin; **System Default** explicitly follows the editor theme. An unconfigured category uses the skin even though its Settings field is empty; explicitly saving an empty value selects the native editor theme. High-contrast themes use the matching dark or light palette.
 
 [![An independent light-theme palette in VSCodium.](images/screenshots/color-picker-light.png)](images/screenshots/color-picker-light.png)
 
@@ -204,8 +222,9 @@ Search Settings for `typoscriptHighlighting`. All extension options can be confi
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
+| `typoscriptHighlighting.skin` | `"auto"` | Automatic Light/Dark; presets `dark`, `light`, `nord`, `monokai`, `solarized`; or native `editor` colors. |
 | `typoscriptHighlighting.typo3Version` | `"auto"` | Advanced optional override; complete Composer and Classic projects detect automatically. |
-| `typoscriptHighlighting.colors.*` | `""` | Base foreground colors for nine syntax categories. |
+| `typoscriptHighlighting.colors.*` | Unconfigured | Base overrides for nine syntax categories. Unset inherits the skin; an explicitly saved `""` selects native editor colors. |
 | `typoscriptHighlighting.darkColors` | `{}` | Optional category overrides for dark themes. |
 | `typoscriptHighlighting.lightColors` | `{}` | Optional category overrides for light themes. |
 | `typoscriptHighlighting.diagnostics.enabled` | `true` | Structural errors, project import warnings, migration hints and site-set YAML diagnostics. |
@@ -215,6 +234,7 @@ The nine category keys are `comments`, `objectPaths`, `values`, `operators`, `co
 
 ```json
 {
+  "typoscriptHighlighting.skin": "nord",
   "typoscriptHighlighting.colors.comments": "#7FB069",
   "typoscriptHighlighting.colors.constants": "#C4A7E7",
   "typoscriptHighlighting.lightColors": {
@@ -263,7 +283,7 @@ page.20.value (
 
 ### A color edit seems to have no effect
 
-Check the selected save scope, Base/Dark/Light palette and the row's origin/override indication. Use **Use inherited** to remove a local override; use **System Default** to explicitly select theme colors.
+Check the selected skin, save scope, Base/Dark/Light palette and the row's origin/override indication. Custom colors and explicit **System Default** values take precedence over skins. Use **Use inherited** or **Inherit all** to remove the corresponding overrides.
 
 ### An import cannot be resolved
 

@@ -25,10 +25,10 @@ function createEditor() {
   const reads = [];
   const changes = [];
   const watchers = [];
-  const events = Object.fromEntries(['open', 'close', 'configuration', 'folders', 'visible', 'text'].map((name) => [name, event()]));
+  const events = Object.fromEntries(['open', 'close', 'configuration', 'folders', 'visible', 'text', 'theme'].map((name) => [name, event()]));
   const editor = {
     files, settings, reads, changes, watchers, events,
-    palettes: new Map(), customColors: new Map(), styles: [], editors: [],
+    palettes: new Map(), customColors: new Map(), skins: new Map(), variants: new Map(), styles: [], editors: [],
     documents: [],
     mode: 'auto',
     readHook: null,
@@ -95,7 +95,13 @@ function createEditor() {
         }
       },
       getConfiguration(section, uri) {
-        return { get: (key, fallback) => key.startsWith('colors.')
+        return { inspect(key) {
+          if (key.startsWith('colors.')) return { defaultValue: '', globalValue: editor.palettes.get(uri.toString())?.[key.slice(7)] };
+          if (key === 'customColors') return { defaultValue: {}, globalValue: editor.customColors.get(uri.toString()) };
+          if (key === 'skin') return { defaultValue: 'auto', globalValue: editor.skins.get(uri.toString()) };
+          if (['darkColors', 'lightColors'].includes(key)) return { defaultValue: {}, globalValue: editor.variants.get(uri.toString())?.[key] };
+          return {};
+        }, get: (key, fallback) => key.startsWith('colors.')
           ? editor.palettes.get(uri.toString())?.[key.slice(7)] ?? fallback
           : key === 'customColors' ? editor.customColors.get(uri.toString()) ?? fallback
           : settings.get(uri.toString()) ?? editor.mode ?? fallback };
@@ -119,6 +125,8 @@ function createEditor() {
       }
     },
     window: {
+      activeColorTheme: { kind: 2 },
+      onDidChangeActiveColorTheme: events.theme.subscribe,
       visibleTextEditors: [],
       onDidChangeVisibleTextEditors: events.visible.subscribe,
       createTextEditorDecorationType(options) {

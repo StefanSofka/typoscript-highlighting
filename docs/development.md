@@ -49,7 +49,7 @@ The runner removes temporary profiles and projects after each run. Downloaded ed
 
 ### Rendered-color checks and reports
 
-The color suite reads computed foreground RGB values through a localhost debug connection and checks persisted picker settings. It covers all nine categories, literal comment markers, nested constants, CRLF TSconfig, settings precedence, grammar changes, document edits, legacy colors, dark/light themes, hex/spectrum/keyboard input and theme resets. Reset checks compare non-whitespace characters with the captured theme baseline. The suite also verifies that native token-color settings and unrelated languages remain unchanged.
+The color suite reads computed foreground RGB values through a localhost debug connection and checks persisted picker settings. It covers fresh-install automatic colors, all five skins, live Light/Dark changes, the skin selector and undo/inheritance, all nine categories, literal comment markers, nested constants, CRLF TSconfig, settings precedence, grammar changes, document edits, legacy colors, hex/spectrum/keyboard input and theme resets. Native theme baseline checks select the Editor theme skin explicitly. Reset checks compare non-whitespace characters with that baseline. The suite also verifies that native token-color settings and unrelated languages remain unchanged.
 
 Reports default to `.vscode-test/color-results.json`. Failed runs attempt to save a screenshot beside the report.
 
@@ -59,7 +59,7 @@ Reports default to `.vscode-test/color-results.json`. Failed runs attempt to sav
 | `VSCODE_VERSION` | Download a particular VS Code build, such as `1.70.0`, when no executable is supplied. |
 | `TYPOSCRIPT_COLOR_REPORT` | Choose the rendered-color JSON report path. |
 | `TYPOSCRIPT_EXTENSION_PATH` | Load an extracted VSIX's extension directory to test packaged runtime files. |
-| `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real dark/light picker, editor, outline, Classic/Composer detection, YAML navigation, site-set load order and typed settings screenshots during the color suite. |
+| `TYPOSCRIPT_SCREENSHOT_DIR` | Capture real skin selector, dark/light picker, editor, outline, Classic/Composer detection, YAML navigation, site-set load order and typed settings screenshots during the color suite. |
 | `TYPOSCRIPT_TEST_VIEWPORT` | Set a compact color-test viewport such as `1024x800`; screenshot mode uses its fixed larger viewport. |
 
 To verify the declared minimum and regenerate documentation screenshots:
@@ -86,11 +86,11 @@ npm run package
 npx --no-install vsce ls --tree
 ```
 
-The current source builds **typoscript-highlighting-1.6.1.vsix**, including site-set editing and the corrected PNG icon. Install the resulting file with **Extensions: Install from VSIX…**, or run one of:
+The current source builds **typoscript-highlighting-1.7.0.vsix**, including automatic syntax skins and site-set editing. Install the resulting file with **Extensions: Install from VSIX…**, or run one of:
 
 ```bash
-codium --install-extension typoscript-highlighting-1.6.1.vsix
-code --install-extension typoscript-highlighting-1.6.1.vsix
+codium --install-extension typoscript-highlighting-1.7.0.vsix
+code --install-extension typoscript-highlighting-1.7.0.vsix
 ```
 
 GitHub release downloads and extension registries are published separately; their available version can differ from the source version.

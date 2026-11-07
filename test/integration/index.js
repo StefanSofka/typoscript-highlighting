@@ -115,9 +115,10 @@ async function run() {
   console.log('PASS: registered language configuration supports comment toggling');
 
   const colorSetting = vscode.workspace.getConfiguration('typoscriptHighlighting', oldUri);
+  assert.equal(colorSetting.get('skin'), 'auto', 'Automatic skin must work immediately after installation');
   const nativeColors = vscode.workspace.getConfiguration('editor').inspect('tokenColorCustomizations');
   for (const category of ['comments', 'objectPaths', 'values', 'operators', 'constants', 'conditions', 'imports', 'functions', 'punctuation']) {
-    assert.equal(colorSetting.get(`colors.${category}`), '', 'System Default must be the initial color');
+    assert.equal(colorSetting.get(`colors.${category}`), '', 'Category overrides must start unconfigured');
   }
   await colorSetting.update('colors.comments', '#12AB34', vscode.ConfigurationTarget.WorkspaceFolder);
   await colorSetting.update('colors.values', 'custom', vscode.ConfigurationTarget.WorkspaceFolder);
