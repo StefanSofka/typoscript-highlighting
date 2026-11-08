@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseSiteSettings } = require('../lib/site-settings');
+const { parseSiteSettings, inspectSettings } = require('../lib/site-settings');
 
 test('site settings read flat and nested scalar keys, quotes, comments and multiline values with source locations', () => {
   const nodes = parseSiteSettings('site.title: "Hello # World"\nsite:\n  color: red\nbroken: [unclosed\n', '/config/sites/main/settings.yaml');
@@ -24,4 +24,13 @@ test('bounded aliases and lists are readable; custom tags, duplicate keys and im
   assert.deepEqual(nodes.map((node) => node.path), ['original', 'alias', 'items']);
   assert.deepEqual(nodes[2].rawValue, ['one', 'two']);
   assert.deepEqual(parseSiteSettings('site.title: First\nsite.title: Second', '/settings.yaml'), []);
+});
+
+test('the YAML analysis limit measures UTF-8 bytes, including multibyte input', () => {
+  const oversized = 'site.title: ' + '界'.repeat(180000);
+  assert.ok(oversized.length < 512 * 1024);
+  const model = inspectSettings(oversized, '/settings.yaml');
+  assert.deepEqual(model.definitions, []);
+  assert.ok(model.issues.some((issue) => issue.code === 'yaml-limit'));
+  assert.equal(parseSiteSettings('site.title: 日本語', '/settings.yaml')[0].rawValue, '日本語');
 });

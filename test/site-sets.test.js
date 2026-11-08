@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { setupProject } = require('./helpers/project');
 const { Uri } = require('./helpers/editor');
-const { orderSets } = require('../lib/site-sets');
+const { orderSets, at } = require('../lib/site-sets');
 const { inspectSettings, inspectConfig, validateSetting } = require('../lib/site-settings');
 const { parse } = require('../lib/parser');
 
@@ -186,4 +186,25 @@ test('direct siteSettings getters and insertData references have key ranges with
   const parsed = parse('page.10.data = siteSettings:site.title\npage.20.value = {siteSettings:site.title}\npage.30.value = siteSettings:not.a.getter\n# page.40.data = siteSettings:comment\npage.50.value (\n  <h1>{siteSettings:site.title}</h1>\n)\n');
   assert.deepEqual(parsed.references.map((ref) => ref.name), ['site.title', 'site.title', 'site.title']);
   for (const ref of parsed.references) assert.equal(parsed.lines[ref.line].slice(ref.start, ref.end), 'site.title');
+});
+
+test('YAML value navigation recognizes every line of a multiline scalar', () => {
+  const model = inspectSettings('site.title: |\n  First line\n  Second line\nsite.other: value\n', '/settings.yaml');
+  const location = model.definitions[0].valueLocation;
+  assert.ok(at(location, { line: 1, character: 4 }));
+  assert.ok(at(location, { line: 2, character: 4 }));
+  assert.ok(!at(location, { line: 0, character: 0 }));
+  assert.ok(!at(location, { line: 3, character: 1 }));
+  assert.ok(at({ line: 1, start: 2, end: 6 }, { line: 1, character: 4 }));
+  assert.ok(!at({ line: 1, start: 2, end: 6 }, { line: 2, character: 4 }));
+});
+
+test('YAML filename globs keep multiple wildcards and regex punctuation literal', async (t) => {
+  const { editor, project } = fixture(t);
+  editor.put('/site/fragments/10-part(1)-base.yaml', 'site.title: First');
+  editor.put('/site/fragments/20-part(1)-last.yaml', 'site.title: Last');
+  editor.put('/site/fragments/30-part2-last.yaml', 'site.title: Excluded');
+  const resolved = await project.siteSets.resolveYamlImport(Uri.file('/site/settings.yaml'),
+    { path: 'fragments/*part(1)*.yaml', glob: true }, { extensions: new Map() });
+  assert.deepEqual(resolved.uris.map((uri) => uri.path), ['/site/fragments/10-part(1)-base.yaml', '/site/fragments/20-part(1)-last.yaml']);
 });

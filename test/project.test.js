@@ -21,6 +21,20 @@ test('EXT and relative imports resolve deterministically and reject directory tr
   assert.equal((await project.resolveImport(document, { path: './*.typoscript' }, { isCancellationRequested: true })).uris.length, 0);
 });
 
+test('TypoScript imports normalize Windows separators before rejecting parent traversal', async (t) => {
+  const { editor, project, document } = setup(t);
+  editor.put('/site/constants.typoscript', 'site.title = Local');
+  editor.put('/site/packages/site/setup.typoscript', 'page = PAGE');
+  for (const importPath of ['./..\\private.typoscript', '.\\..\\private.typoscript', 'EXT:my_site/..\\private.typoscript']) {
+    const result = await project.resolveImport(document, { path: importPath });
+    assert.deepEqual(result.uris, []);
+    assert.equal(result.reason, 'Parent traversal is not supported');
+  }
+  assert.equal(editor.reads.length, 0, 'unsafe imports must fail before discovering or reading files');
+  assert.equal((await project.resolveImport(document, { path: '.\\constants.typoscript' })).uris[0].path, '/site/constants.typoscript');
+  assert.equal((await project.resolveImport(document, { path: 'EXT:my_site\\setup.typoscript' })).uris[0].path, '/site/packages/site/setup.typoscript');
+});
+
 test('source discovery handles import cycles, unsaved documents and sibling constants', async (t) => {
   const { editor, project, document } = setup(t);
   document.text = '@import "./a.typoscript"\npage.value = {$site.name}';

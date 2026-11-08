@@ -2,7 +2,7 @@
 	"name": "typoscript-highlighting",
 	"displayName": "TYPO3 - TypoScript Highlighting",
 	"description": "TypoScript and TSconfig highlighting, TYPO3 site sets, typed settings, import navigation and configurable colors for VS Code and VSCodium.",
-	"version": "1.8.0",
+	"version": "1.8.1",
 	"publisher": "stefan-sofka",
 	"license": "MIT",
 	"author": {
@@ -529,6 +529,11 @@
 		"vscode-oniguruma": "2.0.1",
 		"vscode-textmate": "9.3.2",
 		"yaml": "2.9.1"
+	},
+	"overrides": {
+		"@vscode/vsce": {
+			"minimatch": "^11.0.1"
+		}
 	},
 	"__metadata": {
 		"id": "5a650ac1-fd53-4c35-8249-a03a5925512a",

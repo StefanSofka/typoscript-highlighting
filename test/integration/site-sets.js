@@ -99,6 +99,15 @@ async function run(api, capture) {
   assert.ok(settingRefs.some((entry) => entry.uri.path === sourceFile && entry.range.start.line === 9));
   console.log('PASS: native YAML dependency completion, F12, links, enum values and setting references');
 
+  await replace(siteSettings, settingsBeforeCompletion + 'site.multiline: |\n  First line\n  Second line\n');
+  await api.whenIdle();
+  const multilinePosition = position(siteSettings, 'Second line');
+  const multilineHovers = await vscode.commands.executeCommand('vscode.executeHoverProvider', siteSettings.uri, multilinePosition);
+  assert.ok(multilineHovers.some((hover) => hover.range?.contains(multilinePosition)
+    && hover.contents.some((content) => (content.value || '').includes('Second line'))), JSON.stringify(multilineHovers));
+  await replace(siteSettings, settingsBeforeCompletion); await api.whenIdle();
+  console.log('PASS: native multiline YAML hover includes the requested value position');
+
   await replace(siteSettings, siteSettings.getText().replace('site.mode: dark', 'site.mode: invalid'));
   await api.whenIdle();
   assert.ok(vscode.languages.getDiagnostics(siteSettings.uri).some((entry) => entry.code === 'setting-value'));
