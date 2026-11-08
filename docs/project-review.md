@@ -1,128 +1,78 @@
-# TypoScript Extension Architecture
+# Architecture
 
-This document describes version **1.8.0**, including the simplified theme editor, consolidated settings, compatibility migration and refactored configuration code. Historical investigations, release-specific behavior and earlier test results are recorded in the [development log](development-log.md). Everyday instructions are in the [README](../README.md).
+[README](../README.md) · [Development](development.md) · [Security](../SECURITY.md)
 
-## Runtime structure
+This is the current design reference. User-facing behavior is documented in the [user guide](user-guide.md); release-specific evidence belongs in the [development log](development-log.md).
 
-The extension uses CommonJS JavaScript and generated TextMate grammars, with no compilation step. It supports TypoScript and TSconfig highlighting, project navigation, site sets, typed static settings, diagnostics and optional indentation formatting. It does not run TYPO3 or evaluate its final runtime configuration.
+## Modules
 
-| File or directory | Responsibility |
+| Boundary | Modules and responsibility |
 | --- | --- |
-| `package.json` | Languages, the five public settings, commands, activation and development tools |
-| `extension.js` | Activation, configuration migration, controller initialization and output channel |
-| `lib/settings.js` | Shared category/scope metadata, consolidated theme adapter and legacy fallback paths |
-| `lib/settings-migration.js` | Scope-preserving migration, JSONC Folder reads and post-save cleanup |
-| `lib/controller.js` | Per-document detection, manual language selection, watchers and update lifecycle |
-| `lib/version.js` | Composer/Classic installation context, version sources, conflicts and caches |
-| `lib/language.js` | Shared language IDs and target-version compatibility |
-| `lib/editor.js` | Version indicator, source inspection, optional override and shared language settings |
-| `lib/parser.js` | Structural TypoScript/TSconfig analysis without runtime evaluation |
-| `lib/project.js` | Installation-scoped imports, extension discovery and source searches |
-| `lib/features.js` | Outline, folding, links, completion, navigation, diagnostics, quick fixes and formatting |
-| `lib/snippets.js` | Setup and TSconfig completion snippets |
-| `lib/site-sets.js` | Set registry, dependency ordering, static composition and site context |
-| `lib/site-settings.js` | Static YAML values, typed definitions, imports, validation and source ranges |
-| `lib/site-set-features.js` | YAML dependency/setting navigation, hover, completion and diagnostics |
-| `lib/site-context.js` | Automatic or remembered site choice and load-order inspection |
-| `lib/skins.js` | Five syntax-color presets and automatic Light/Dark resolution |
-| `lib/palette.js` | Modern custom colors and legacy palette resolution at resource scopes |
-| `lib/color-settings.js` | Visual Theme Settings command, captured destination, saves and panel lifecycle |
-| `lib/color-settings-view.js` | Webview markup, preview example, CSP and local asset URLs |
-| `media/` | Theme dropdown, nine swatch/hex fields, local preview, validation and Save |
-| `lib/colors.js` | Foreground decorations, per-resource colors, caching and cleanup |
-| `lib/tokenizer.js` | Lazy TextMate/Oniguruma initialization and grammar-based color categories |
-| `scripts/build-grammars.js` | Shared source for generated modern and legacy grammars |
-| `scripts/run-integration.js` | Disposable editor profiles and project fixtures |
-| `scripts/color-probe.js` | Native/webview interaction and rendered foreground checks |
-| `scripts/package.js` | Versioned VSIX with links pinned to the release tag, or a preview using a screenshot-only commit |
-| `test/` | Unit, regression, packaging and real-editor checks |
-| `.vscodeignore` | Runtime/package allowlist |
-| `.github/workflows/test.yml` | Regression, packaging and editor validation |
+| Activation | `extension.js` creates the output channel, awaits settings migration and owns subscriptions. |
+| Installation | `version.js` discovers Composer/Classic context; `controller.js` serializes detection and language changes; `editor.js` exposes status and commands. |
+| Syntax | `language.js` owns language IDs; `parser.js` builds structural nodes; `tokenizer.js` maps grammar scopes to color ranges. |
+| Project sources | `project.js` discovers extension roots and imports; `paths.js` shares URI containment and literal filename wildcard matching. |
+| Site configuration | `site-sets.js` discovers providers, orders dependencies and composes settings; `site-settings.js` parses YAML and validates types. |
+| Providers | `features.js` implements TypoScript services; `site-set-features.js` handles YAML services; `site-context.js` exposes context selection. |
+| Color resolution | `settings.js` owns category/scope metadata and the storage adapter; `palette.js` resolves precedence; `skins.js` defines presets. |
+| Theme editor | `color-settings.js` owns destination, validation and writes; `color-settings-view.js` supplies HTML/CSP; `media/` owns the draft and preview. |
+| Decorations | `colors.js` owns visible-editor jobs, token caches and decoration lifetimes. |
+| Build | `scripts/build-grammars.js` generates grammars; `scripts/package.js` builds a VSIX; `.vscodeignore` is the package allowlist. |
 
-Runtime dependencies are `vscode-textmate`, `vscode-oniguruma`, the static `yaml` parser and `jsonc-parser` 3.3.1 for settings migration. The package includes the token engines, Oniguruma WASM, required licenses/notices, YAML's Node distribution, JSONC parser UMD files and MIT license, local theme-editor assets, generated grammars, images and documentation. Development tools and tests are excluded from the VSIX.
+All runtime modules are CommonJS JavaScript. The four direct runtime dependencies are TextMate, Oniguruma/WASM, YAML and JSONC parsers. Their required distributions and licenses are packaged; development dependencies are excluded.
 
-## Settings and theme workflow
+## Settings and migration
 
-The native extension Settings page contributes five resource-scoped entries:
+The public configuration surface is defined in `package.json` and documented in the [settings reference](../README.md#settings-reference). `customTheme` is a resource-scoped object with default `{}`:
 
-| Setting | Role |
-| --- | --- |
-| `typoscriptHighlighting.theme` | Automatic, Dark, Light, Nord, Monokai, Solarized or Custom |
-| `typoscriptHighlighting.customTheme` | One stored object for custom colors and migrated compatibility data |
-| `typoscriptHighlighting.diagnostics.enabled` | Enable structural, import, migration and YAML diagnostics |
-| `typoscriptHighlighting.formatting.enabled` | Opt in to conservative indentation formatting |
-| `typoscriptHighlighting.typo3Version` | Optional target override when automatic detection is insufficient |
+```json
+{
+  "typoscriptHighlighting.theme": "custom",
+  "typoscriptHighlighting.customTheme": {
+    "colors": {
+      "comments": "#7FB069",
+      "objectPaths": "#88C0D0"
+    }
+  }
+}
+```
 
-The nine individual color inputs, old Skin selector, separate Dark/Light palettes, legacy custom-color object and duplicate Comment Rules selector are removed from the public configuration contributions. The native page retains the Theme dropdown and **Open Theme Settings** link. The nested Custom Theme object uses the valid schema type array `["object"]` to retain compact JSON access on the minimum and current editors instead of expanding into nine more input rows. The optional TYPO3 Version control remains visible alongside the other four entries.
+The example illustrates storage, not a complete saved palette. The visual editor validates and saves all nine categories together. Optional `legacy` data preserves `skin`, `darkColors`, `lightColors`, `customColors` and `commentRules` compatibility.
 
-The visual page is the color-editing interface. The stable `typoscriptHighlighting.configureColors` command is presented as **TypoScript Highlighting: Theme Settings**. A guarded `extension/context` contribution places it in this installed extension's gear menu at `2_configure@0`, before the built-in Settings item. The extension ID passed by that menu is ignored as a color-category argument. `editCustomTheme` remains an internal alias for older links, without a second Command Palette entry.
+`getSettings` reads fresh configuration snapshots, maps former internal paths to grouped data, and falls back to unmigrated legacy values. Category metadata, layer order and migration destinations have one source in `settings.js`.
 
-VSCodium/VS Code owns the generic Settings renderer. Configuration contributions define its standard fields, descriptions and order; the extension does not override that renderer or intercept the built-in Settings command. Swatches, the color picker and the live syntax preview belong to the visual webview.
+Migration runs before controllers initialize and again for added folders. Each scope is independent. Existing destination members win; save the complete replacement before deleting any old key. A failed write retains the source. JSONC folder reads accept comments, trailing commas and a BOM, but malformed or non-object settings prevent migration of that scope.
 
-### Presets and custom drafts
+### Theme editor invariants
 
-The visual page always displays the same Theme dropdown, nine editable color fields, code preview and Save button. Automatic follows the editor's light/dark appearance; OS changes propagate when the editor follows the system. Dark and Light provide fixed palettes. Nord, Monokai and Solarized have light and dark variants. These are foreground palettes; they do not change the workbench or editor background.
+The host captures the destination from the active resource. Explicit project theme data takes precedence over the default User destination. Reopening an existing panel reveals it rather than creating a second session.
 
-Selecting a preset applies that selection immediately and fills all nine fields from its complete palette. Saved custom colors are retained separately. Editing any field starts a Custom draft containing all nine visible colors, preserving the other eight preset values. Swatch and hex input update only the local preview until Save. The dropdown can return to a saved or unsaved Custom palette after viewing presets while the panel remains open. Closing the panel discards unsaved drafts.
+The frontend holds Custom drafts separately from displayed presets. Preset selection writes only Theme; Custom Save first updates the complete palette atomically, preserving compatibility data, then selects Custom. Both actions share one serialized host queue. Responses include request IDs; controls are disabled while pending. The host validates messages independently of frontend validation.
 
-Save requires nine valid six-digit hex colors. It writes the entire custom palette with one atomic Custom Theme object update at the captured destination, preserving compatibility data, and then selects Custom with a second write. Preset selection writes only Theme. Both operations share a serialized host queue and disable controls while pending. A failed preset write restores the previous selection and field values; errors are reported without pretending a draft was saved. The host validates message shapes, categories and values independently of frontend validation.
+The nested Custom Theme schema uses `["object"]` for compact JSON access on minimum and current editors. The stable `configureColors` command opens the visual editor from the Command Palette and extension menu. `editCustomTheme` is an internal compatibility alias.
 
-User settings are the default destination. If the active TypoScript file already has explicit project theme/custom data, including migrated Dark/Light/custom palettes, the editor continues at that Folder or Workspace scope. A plain label identifies the destination; there are no separate scope, palette, inheritance, reset or undo menus. External settings and editor-appearance changes synchronize presets without discarding an unsaved Custom draft. The panel is reused while open and releases listeners on close. Local resource roots and a nonce-based content security policy restrict its assets. Markup is isolated in `color-settings-view.js`; the host shares one write/error queue for preset changes and custom saves.
+## Document and asynchronous state
 
-### Consolidated storage and migration
+Generic `typoscript` documents switch to `typoscript-v11` or `typoscript-v12`. The generic/v12 modes share the modern grammar; v11 has a separate scope. The controller distinguishes its own language switches from manual pins, remembers automatic/manual choices, and checks job identity before applying asynchronous results.
 
-`customTheme` defaults to `{}`. Its `colors` member stores the nine modern category values. Its optional `legacy` member stores migrated `skin`, `darkColors`, `lightColors`, `customColors` and `commentRules` values. The compatibility data preserves older behavior without recreating old settings in the UI.
+Detection keeps project, webroot, vendor and core roots together. Source priority is implemented in `version.js`; version PHP is lexed as text. Filesystem events, focus, re-detection and a bounded core-file check invalidate cached results. Detection probes conventional paths at each ancestor rather than recursively searching parent trees.
 
-Activation migrates configured User, Workspace and open Folder scopes independently. Each old `colors.<category>` value becomes the corresponding member of `customTheme.colors`; the five older compatibility settings move into `customTheme.legacy`. Existing destination members win conflicts. The replacement is saved before old keys are removed. A migration must preserve explicit empty values and scope inheritance, report failures, leave source data recoverable on a failed replacement save, and avoid changing Theme or editing other workspaces.
+Decoration caches use URI, document version and language. Text edits invalidate pending work before the 75 ms debounce. Incremental tokenization reuses a prefix and stops when the suffix's grammar state converges. Jobs check document, editor, language, visibility and lifetime after engine loading.
 
-Activation awaits `migrateSettings` from `lib/settings-migration.js` before starting controllers. Workspace-folder changes queue another migration so folders added later retain their old settings too; public refresh/idle operations await that queue. Folder values are read from JSONC explicitly because the removed setting keys no longer carry registered resource-scope metadata. `jsonc-parser` accepts comments, trailing commas and a BOM; invalid input prevents that scope from being rewritten. The editor configuration API performs saves and cleanup. `getSettings` in `lib/settings.js` maps the previous internal paths onto the new scoped object, fetching current configuration snapshots and falling back to raw legacy data after migration errors.
+Project source caches are invalidated by edits and filesystem events. Cancellation never caches a partial result as a complete shared result. Diagnostics also check job identity and document version before publication. Disposal releases timers, watchers, listeners, decoration types and tokenizer registries.
 
-A modern explicit preset uses its complete palette regardless of saved custom data. Explicit Custom uses the custom category values. With no modern Theme selection, the compatibility resolver retains the earlier skin and dark/light override behavior. An absent legacy category inherits its skin; an explicitly saved empty category requests native editor syntax colors. Legacy `custom` category references resolve their migrated custom-color data. The optional modern TYPO3 Version setting takes precedence over a migrated Comment Rules value.
+## Static configuration
 
-The extension never writes `editor.tokenColorCustomizations`, `workbench.colorCustomizations` or the user's editor theme selection.
+The structural parser records values without evaluating them. Completion, navigation and migration hints use those nodes; formatting changes indentation only when the document is structurally complete.
 
-Category metadata, configuration-layer order and legacy storage paths are shared by the adapter, palette resolver and migration. Presets, individual category overrides and legacy palettes use the same scope-selection helper, preserving explicit empty values and partial inheritance.
+The set registry validates required dependencies, adds optional edges without introducing cycles, orders the full registry, then selects the relevant site's closure. Physical site containment wins over saved context. A shared set without a selected site uses its own dependencies/defaults.
 
-## Highlighting and document lifecycle
+Each set supplies typed defaults followed by its values, then the site supplies its values. A provider's `settings.yaml` replaces inline values. Source history and selected static values are retained separately. YAML parsing limits aliases and recursion, rejects malformed documents and avoids constructing user-controlled regular expressions for filename globs.
 
-`.typoscript` and `.tsconfig` files enter `typoscript`. The controller selects `typoscript-v11` or `typoscript-v12` for the detected target. The generic and v12+ modes share `source.typoscript`; the legacy grammar uses `source.typoscript.v11`, so different grammars do not overwrite one registered scope. TYPO3 12, 13 and 14 share modern comment rules.
+Operational bounds and static-analysis limits are listed once in the [user guide](user-guide.md#analysis-limits). Filesystem and webview boundaries are described in the [security policy](../SECURITY.md#security-model).
 
-The generated grammars cover assignment, multiline literal values, object paths, references/copies, value modifiers, blocks, constants, quoted imports, legacy includes, conditions and comments. Parenthesized multiline values start directly after an object path; `value = (` is a single-line assignment. Comment-looking text inside literal values remains literal. Modern empty `/**/` comments close immediately; legacy block-comment closing rules remain line based.
+## Verification and packaging
 
-Foreground decorations cover ranges identified by the same modern/legacy grammars. The most specific recognized scope determines the category, preserving nested constants and imports. Token engines load only when visible TypoScript needs extension-supplied colors; native Editor-theme compatibility with no overrides avoids this work.
+See [Development](development.md#verification) for commands and the CI matrix. Unit tests cover behavior and failure cases; real-editor tests verify provider results, configuration persistence, actual menu entry points and rendered colors in disposable profiles.
 
-Token ranges are cached by document URI, version and language. Edits debounce for 75 ms, carry grammar state across lines and stop when cached suffix state converges. Async work is discarded after settings, document, language, visibility or lifetime changes. Closed documents release ranges and watchers; disposal releases timers, decorations, registries and event listeners. Per-document queues and close/open tracking distinguish controller language changes from manual pins.
-
-## Installation context and target selection
-
-Version detection keeps project, webroot, vendor and active-core paths together. An installed Composer or Classic core takes precedence over installed package metadata, lockfiles and requirement ranges. Core version PHP is read as text, never executed. Classic `typo3_src` symlinks and copied cores work; inactive archived cores are ignored. Configured Composer vendor/webroot paths and nested/multi-root projects retain their own installation contexts. Incomplete nested project markers stop lookup from borrowing an unrelated parent.
-
-The source-aware version indicator identifies installed, locked, range, manual and override states. A conflict opens both installed-core and lockfile sources. The status menu leads with inspection, refresh and automatic detection; target selection remains optional. Explicit `v11`/`v12`/`v13`/`v14` overrides take precedence over manual language pins. Choosing generic TypoScript or automatic detection resumes normal selection.
-
-Filesystem events, window focus and explicit re-detection refresh caches. A three-second read of only the active core version also catches symlink switches omitted by file watchers; there is no recursive polling. Reads use `workspace.fs` and settings are resolved against document URIs. Rejected or stale updates cannot replace a newer detection result.
-
-## Project and site-set providers
-
-The structural parser analyzes source without executing conditions or TYPO3. Providers expose outline, folding, relative/EXT import links, constant definitions/references/hover/completion, contextual snippets and common core/property suggestions. Advisory migration diagnostics cover recognized old syntax and version-specific core names. Opt-in formatting changes leading indentation only, preserves literal values and line endings, and leaves structurally invalid documents for repair.
-
-Import resolution uses the detected installation, extension keys and available Composer/Classic directories. Filename wildcards are supported; broad runtime/database configuration and arbitrary directory traversal are not. Project discovery bounds manifests, constants files, imports and reference candidates; cancellation and document versions prevent obsolete diagnostics from replacing current results.
-
-The site-set registry discovers Composer and Classic sets, resolves declared required and available optional dependencies, rejects invalid required graphs and establishes dependency load order before selecting the site's closure. Physical site containment wins over a remembered choice. Shared sets otherwise use their dependencies/defaults, and users can choose a site context per project. Unused sets and other sites do not contribute definitions.
-
-The static YAML layer composes typed defaults, per-set values and site values with source history. `settings.yaml` replaces a provider's inline values. It supports dotted/nested maps, scalar/list values, bounded local aliases and static imports in settings files. Set configuration and definition files do not process imports. YAML providers connect dependency names and setting keys to their definitions and offer replacement edits that preserve neighboring syntax and comments. Unsaved and discarded edits invalidate cached results.
-
-The registry bounds discovery to 300 extension roots, 500 set/site directories, 32 import levels, 500 imported settings loads and 20,000 definitions. YAML files are limited to 512 KiB and alias traversal is bounded. Environment placeholders, custom YAML tags, PHP, database templates, conditions and final runtime overrides remain unevaluated. A readonly definition affects TYPO3's backend editor; the source YAML stays editable.
-
-## Verification
-
-Authored JavaScript and generated grammars are checked before packaging. Unit/regression tests cover grammar engines, incremental updates, parser/provider behavior, lifecycle, schema/storage, scope inheritance, migration and packaging. Real-editor integration uses disposable profiles and temporary TYPO3 11–14 Composer/Classic projects. The rendered suite checks computed foregrounds and persisted settings, operates the actual native and visual theme controls, and confirms unrelated languages and native token-color settings remain unchanged. Tests use a fresh configuration snapshot after writes.
-
-The refactored settings and release packaging pass all 272 unit/regression/package-content tests and real-editor integration on minimum VS Code 1.70.0, including JSONC migration, existing destination values and all configuration scopes. The VSCodium 1.143.1 screenshot suite passes 73 scenarios, including all nine README images; the compact 1024 × 800 run passes 67 scenarios. Both color runs check 480 token ranges and 6,724 character foregrounds, including the reduced native menu and visual theme editor. The README, native Settings, preset, customized palette and corrected menu captures have been visually inspected. Packaging and archive verification are recorded in the [development log](development-log.md).
-
-The preceding direct-entry build's 250 regression/package-content tests and 69 screenshot scenarios are historical baseline results. They predate the consolidated storage and do not establish this revision's unit/package correctness.
-
-GitHub Actions runs regression/packaging checks on Node.js 22/24/26, integration on VS Code 1.70.0 and stable, and rendered-color checks on stable. The release is packaged as `typoscript-highlighting-1.8.0.vsix`; local review builds can use `typoscript-highlighting-preview.vsix`. Building a package does not publish a release or upload to an extension registry.
-
-Release image URLs and clickable screenshot/documentation links are pinned to `v1.8.0`. Preview URLs can use a separate screenshot-only GitHub commit before a release tag exists. Both modes avoid mutable paths under `HEAD`, while source Markdown retains relative links. All referenced images and the icon are real PNGs, checked by signature and image decoding. HTTPS sources and ordinary VSCE packaging preserve Marketplace compatibility; current extension Details removes local/data-URI image sources during sanitization.
-
-Independent tests of the final pin load all nine inline README images on VS Code 1.70.0 and VSCodium 1.143.1. All ten screenshot/click destinations return PNG data identical to the local files. The final archive's 19 PNGs decode successfully, and its runtime files match the verified source.
+Release README images and document links are pinned to `v<manifest version>`. Preview mode uses an immutable screenshot commit. Source Markdown keeps relative links. The package allowlist, image formats and Markdown rewriting are tested. Historical test totals are retained in the development log rather than used as current pass criteria.

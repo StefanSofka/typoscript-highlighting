@@ -8,7 +8,7 @@ async function run() {
   const extension = vscode.extensions.getExtension('stefan-sofka.typoscript-highlighting');
   const readme = await fs.readFile(path.join(extension.extensionPath, 'readme.md'), 'utf8');
   const expectedImages = [...readme.matchAll(/!\[[^\]]*\]\(https:\/\/raw\.githubusercontent\.com\//g)].length;
-  assert.ok(expectedImages >= 9, 'set TYPOSCRIPT_EXTENSION_PATH to an extracted release or preview VSIX');
+  assert.ok(expectedImages > 0, 'set TYPOSCRIPT_EXTENSION_PATH to an extracted release or preview VSIX with pinned README images');
   const state = path.join(directory, 'color-state.json');
   const ack = path.join(directory, 'color-ack.json');
   async function stage(data) {

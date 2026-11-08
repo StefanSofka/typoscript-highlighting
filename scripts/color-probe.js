@@ -162,38 +162,39 @@ async function runColorProbe(directory, port, reportFile) {
       if (current.action === 'extension-readme') {
         await verifyReadme(current.expectedImages);
       } else if (current.action === 'extension-theme-menu') {
-        const manage = await until('extension Manage button', async () => evaluate(`(() => {
+        const manageButton = () => evaluate(`(() => {
           const button = document.querySelector('.extension-editor .action-label.manage:not(.hide)');
           const r = button?.getBoundingClientRect();
           return r?.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : false;
-        })()`));
-        const click = async (point) => {
-          await call('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
-          await call('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
-        };
-        await click(manage);
-        await until('Theme Settings in extension menu', async () => evaluate(`(() => {
+        })()`);
+        const themeMenuItem = () => evaluate(`(() => {
           const labels = [...document.querySelectorAll('.monaco-menu .action-label')];
           const button = labels.find(node => node.textContent.includes('Theme Settings'));
           const r = button?.getBoundingClientRect();
           return r?.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : false;
-        })()`));
-        if (current.menuScreenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
-          await fs.mkdir(process.env.TYPOSCRIPT_SCREENSHOT_DIR, { recursive: true });
-          const capture = await call('Page.captureScreenshot', { format: 'png' });
-          await fs.writeFile(path.join(process.env.TYPOSCRIPT_SCREENSHOT_DIR, current.menuScreenshot), Buffer.from(capture.data, 'base64'));
-        }
-        // Monaco enables menu mouse-up handlers after 100 ms to ignore the
-        // opening click. Screenshot capture used to hide this delay in tests.
-        await pause(150);
-        const item = await evaluate(`(() => {
-          const node = [...document.querySelectorAll('.monaco-menu .action-label')]
-            .find(node => node.textContent.includes('Theme Settings'));
-          if (!node) throw new Error('Theme Settings menu item disappeared');
-          const r = node.getBoundingClientRect();
-          return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
         })()`);
-        await click(item);
+        const click = async (point) => {
+          await call('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
+          await call('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
+        };
+        await until('select Theme Settings from extension menu', async () => {
+          const manage = await manageButton();
+          if (!manage) return false;
+          await click(manage);
+          await until('Theme Settings in extension menu', themeMenuItem);
+          if (current.menuScreenshot && process.env.TYPOSCRIPT_SCREENSHOT_DIR) {
+            await fs.mkdir(process.env.TYPOSCRIPT_SCREENSHOT_DIR, { recursive: true });
+            const capture = await call('Page.captureScreenshot', { format: 'png' });
+            await fs.writeFile(path.join(process.env.TYPOSCRIPT_SCREENSHOT_DIR, current.menuScreenshot), Buffer.from(capture.data, 'base64'));
+          }
+          // Monaco enables menu mouse-up handlers after 100 ms. The workbench
+          // can dismiss the menu during that delay; reopen it before retrying.
+          await pause(150);
+          const item = await themeMenuItem();
+          if (!item) return false;
+          await click(item);
+          return true;
+        });
         const ui = await picker();
         assert.equal(await ui(`document.querySelectorAll('input[type=color]').length`), 9);
         assert.equal(await ui(`document.getElementById('colors').hidden`), false);

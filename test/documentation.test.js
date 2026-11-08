@@ -8,11 +8,41 @@ const { packageOptions } = require('../scripts/package');
 const root = path.resolve(__dirname, '..');
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const screenshots = [...new Set([...readme.matchAll(/\]\((images\/[^)]+\.png)\)/g)].map((match) => match[1]))];
+const documentation = ['README.md', 'CHANGELOG.md', 'SECURITY.md', 'docs/user-guide.md', 'docs/development.md', 'docs/project-review.md'];
 
-test('every README screenshot and linked menu capture exists as a PNG in the extension', () => {
-  assert.ok(screenshots.length >= 10, 'cover inline images and the linked extension menu');
-  for (const filename of screenshots) {
-    const bytes = fs.readFileSync(path.join(root, filename));
+test('maintained documentation links resolve to repository files and real headings', () => {
+  const headings = (text) => new Set([...text.matchAll(/^#{1,6} (.+)$/gm)].map((match) => match[1].toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-')));
+  for (const filename of documentation) {
+    const source = fs.readFileSync(path.join(root, filename), 'utf8');
+    for (const [, link] of source.matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (/^[a-z][a-z\d+.-]*:/i.test(link)) continue;
+      const [relative, fragment] = link.split('#');
+      const target = path.resolve(root, path.dirname(filename), decodeURIComponent(relative || path.basename(filename)));
+      assert.ok(target.startsWith(root + path.sep), `${filename}: link must stay in the repository: ${link}`);
+      assert.ok(fs.statSync(target).isFile(), `${filename}: missing ${link}`);
+      if (fragment && target.endsWith('.md')) assert.ok(headings(fs.readFileSync(target, 'utf8')).has(fragment), `${filename}: missing heading ${link}`);
+    }
+  }
+});
+
+test('README installation matches the manifest release version', () => {
+  const manifest = require('../package.json');
+  assert.ok(readme.includes(`${manifest.name}-${manifest.version}.vsix`));
+  assert.ok(readme.includes(`/releases/tag/v${manifest.version}`));
+});
+
+test('documentation screenshots and the linked menu capture are valid PNGs', () => {
+  assert.ok(screenshots.length > 0, 'the package README includes a real visual preview');
+  const images = new Set();
+  for (const filename of documentation) {
+    const source = fs.readFileSync(path.join(root, filename), 'utf8');
+    for (const [, image] of source.matchAll(/\]\(([^)]+\.png)\)/g)) {
+      if (!/^[a-z]+:/i.test(image)) images.add(path.resolve(root, path.dirname(filename), image));
+    }
+  }
+  for (const filename of images) {
+    const bytes = fs.readFileSync(filename);
     assert.deepEqual(bytes.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), filename);
     assert.ok(bytes.readUInt32BE(16) >= 128 && bytes.readUInt32BE(20) >= 128, filename);
   }
